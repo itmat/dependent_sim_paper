@@ -1,24 +1,35 @@
 input_data_urls = {
     "GSE151923_metaReadCount_ensembl.txt.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151923/suppl/GSE151923%5FmetaReadCount%5Fensembl%2Etxt%2Egz",
     "GSE151923_family.soft.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151923/soft/GSE151923_family.soft.gz",
+    "GSE81142.counts.txt.gz": "https://s3.amazonaws.com/itmat.data/tom/dependent_sim_paper/GSE81142.counts.txt.gz",
+    "GSE81142_family.soft.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE81nnn/GSE81142/soft/GSE81142_family.soft.gz",
+    "BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz": "https://s3.amazonaws.com/itmat.data/BHTC_JTK_RESULTS/BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz",
 }
 soft_metadata_attributes = {
   "GSE151923": {
     "title": r"!Sample_title = (.*)",
     "geo_accesion": r"!Sample_geo_accession = (.*)",
-    "description": r"!Sample_description = (.*)",
+    "sample_id": r"!Sample_description = ([a-zA-Z0-9]+_[a-zA-Z0-9]+_[a-zA-Z0-9]+)",
     "sex": r"!Sample_characteristics_ch1 = Sex: (.*)",
-    "batch": r"!Sample_characteristics_ch1 = batch: (.*) group", line)
+    "batch": r"!Sample_characteristics_ch1 = batch: (.*) group",
+  },
+  "GSE81142": {
+    "title": r"!Sample_title = (.*)",
+    "geo_accesion": r"!Sample_geo_accession = (.*)",
+    "sex": r"!Sample_characteristics_ch1 = Sex: (.*)",
+    "concentration": r"!Sample_characteristics_ch1 = dmso % v/v: ([\.0-9]+)",
+    "hour": r"!Sample_characteristics_ch1 = time (h): ([0-9]+)",
   },
 }
 
 rule all:
     input:
         "simulated_data/Mouse.Cortex.Male.k=2.Control.txt",
+        "simulated_data/Fly.WholeBody.Male.k=2.Control.txt",
         #"time_series_data/Mouse.Cortex.k=2.txt",
-        "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
-        expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
-          k=[0,2], batch=range(0,20)),
+        #"processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
+        #expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
+        #  k=[0,2], batch=range(0,20)),
 
 rule generate_sif:
     input:
@@ -30,20 +41,20 @@ rule generate_sif:
 
 rule download_data:
   output:
-    lambda wildcards: "data/{data_file}"
+    "data/{data_file}"
   params:
     url = lambda wildcards: input_data_urls[wildcards.data_file]
   shell:
-    "curl -o {params.url} "
+    "curl -o {output} {params.url} "
 
 rule process_soft_metadata:
   input:
     soft = "data/{GSE}_family.soft.gz"
   output:
-    "processed/{GSE}_sample_metadata.txt"
-  parmas:
-    attribute_names = lambda wildcards: soft_metadata_attributes[wildcards.GSE].keys(),
-    attribute_regex = lambda wildcards: soft_metadata_attributes[wildcards.GSE].values(),
+    table = "processed/{GSE}_sample_metadata.txt"
+  params:
+    attribute_names = lambda wildcards: list(soft_metadata_attributes[wildcards.GSE].keys()),
+    attribute_regex = lambda wildcards: list(soft_metadata_attributes[wildcards.GSE].values()),
   script:
     "scripts/process_metadata.py"
 
@@ -61,7 +72,22 @@ rule simulate_mouse:
         "images/dependent_sim.sif",
     shell:
         "Rscript scripts/simulate_data.R"
-        
+
+rule simulate_fly:
+    input:
+        "data/GSE81142.counts.txt.gz",
+        "processed/GSE81142_sample_metadata.txt",
+        sif = "images/dependent_sim.sif",
+    output:
+        expand("simulated_data/Fly.WholeBody.Male.k={k}.{group}{suffix}",
+            k = [0,2],
+            group = ["Case", "Control"],
+            suffix = [".txt", ".true_values.txt"])
+    container:
+        "images/dependent_sim.sif",
+    shell:
+        "Rscript scripts/simulate_data.fly.R"
+
 rule simulate_time_series:
     input:
         "..."
@@ -103,7 +129,6 @@ rule run_cyclops:
         "file://images/cyclops.sif",
     shell:
         "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops"
-    
 
 rule run_cyclops_real_data:
     input:
