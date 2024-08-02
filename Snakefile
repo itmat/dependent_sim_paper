@@ -4,6 +4,7 @@ input_data_urls = {
     "GSE81142.counts.txt.gz": "https://s3.amazonaws.com/itmat.data/tom/dependent_sim_paper/GSE81142.counts.txt.gz",
     "GSE81142_family.soft.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE81nnn/GSE81142/soft/GSE81142_family.soft.gz",
     "BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz": "https://s3.amazonaws.com/itmat.data/BHTC_JTK_RESULTS/BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz",
+    "GSE151565_Liver-counts.csv.gz": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151565/suppl/GSE151565%5FLiver%2Dcounts%2Ecsv%2Egz",
 }
 soft_metadata_attributes = {
   "GSE151923": {
@@ -26,6 +27,7 @@ rule all:
     input:
         "simulated_data/Mouse.Cortex.Male.k=2.Control.txt",
         "simulated_data/Fly.WholeBody.Male.k=2.Control.txt",
+        "simulated_data/Liver_120_simulated_time_series_k=2.csv",
         #"time_series_data/Mouse.Cortex.k=2.txt",
         #"processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
         #expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
@@ -88,15 +90,35 @@ rule simulate_fly:
     shell:
         "Rscript scripts/simulate_data.fly.R"
 
+rule process_time_series:
+    input:
+      "data/GSE151565_Liver-counts.csv.gz",
+      "images/dependent_sim.sif",
+    output:
+      "processed/mean_per_time_Liver.csv",
+      "processed/Liver_normalized_time_series_data.csv",
+      "processed/Liver_ZT0-counts.csv",
+    container:
+        "images/dependent_sim.sif",
+    shell:
+      "Rscript scripts/process_time_series.R"
+
 rule simulate_time_series:
     input:
-        "..."
+        "processed/Liver_ZT0-counts.csv",
+        "processed/mean_per_time_Liver.csv",
+        "processed/GSE151923_sample_metadata.txt",
+        "data/GSE151923_metaReadCount_ensembl.txt.gz",
+        "images/dependent_sim.sif",
     output:
-        "time_series_data/Mouse.Cortex.k=2.txt"
+        "simulated_data/Liver_120_simulated_time_series_k=2.csv",
+        "simulated_data/Liver_120_normalized_simulated_time_series_k=2.csv",
+        "simulated_data/Liver_120_simulated_time_series_k=0.csv",
+        "simulated_data/Liver_120_normalized_simulated_time_series_k=0.csv",
     container:
         "images/dependent_sim.sif"
     shell:
-        "Rscript scripts/simulate_time_series.R"
+        "Rscript scripts/simulate_time_data.R"
 
 rule make_cyclic_gene_list:
     input:

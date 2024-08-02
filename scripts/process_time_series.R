@@ -4,7 +4,7 @@ library(dplyr)
 library(tidyr)
 library(tidyverse)
 
-raw_data <- read_csv("time_series_data/GSE151565_Liver-counts.csv")
+raw_data <- read_csv("data/GSE151565_Liver-counts.csv.gz")
 
 normalized_data <- raw_data
 
@@ -54,4 +54,4 @@ write_csv(processed_data, "processed/Liver_normalized_time_series_data.csv")
 
 data0 <- cbind(raw_data$EnsemblID, raw_data[, time_points==paste0('ZT',0)])
 data0 <- data0[-1, ]
-write_csv(data0, "data/Liver_ZT0-counts.csv")
+write_csv(data0, "processed/Liver_ZT0-counts.csv")
