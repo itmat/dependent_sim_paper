@@ -1,0 +1,122 @@
+input_data_urls = {
+    "GSE151923_metaReadCount_ensembl.txt.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151923/suppl/GSE151923%5FmetaReadCount%5Fensembl%2Etxt%2Egz",
+    "GSE151923_family.soft.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151923/soft/GSE151923_family.soft.gz",
+}
+soft_metadata_attributes = {
+  "GSE151923": {
+    "title": r"!Sample_title = (.*)",
+    "geo_accesion": r"!Sample_geo_accession = (.*)",
+    "description": r"!Sample_description = (.*)",
+    "sex": r"!Sample_characteristics_ch1 = Sex: (.*)",
+    "batch": r"!Sample_characteristics_ch1 = batch: (.*) group", line)
+  },
+}
+
+rule all:
+    input:
+        "simulated_data/Mouse.Cortex.Male.k=2.Control.txt",
+        #"time_series_data/Mouse.Cortex.k=2.txt",
+        "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
+        expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
+          k=[0,2], batch=range(0,20)),
+
+rule generate_sif:
+    input:
+        "containers/{container}.def"
+    output:
+        "images/{container}.sif"
+    shell:
+        "apptainer build {output} {input}"
+
+rule download_data:
+  output:
+    lambda wildcards: "data/{data_file}"
+  params:
+    url = lambda wildcards: input_data_urls[wildcards.data_file]
+  shell:
+    "curl -o {params.url} "
+
+rule process_soft_metadata:
+  input:
+    soft = "data/{GSE}_family.soft.gz"
+  output:
+    "processed/{GSE}_sample_metadata.txt"
+  parmas:
+    attribute_names = lambda wildcards: soft_metadata_attributes[wildcards.GSE].keys(),
+    attribute_regex = lambda wildcards: soft_metadata_attributes[wildcards.GSE].values(),
+  script:
+    "scripts/process_metadata.py"
+
+rule simulate_mouse:
+    input:
+        "processed/GSE151923_sample_metadata.txt",
+        "data/GSE151923_metaReadCount_ensembl.txt.gz",
+        sif = "images/dependent_sim.sif",
+    output:
+        expand("simulated_data/Mouse.Cortex.Male.k={k}.{group}{suffix}",
+            k = [0,2],
+            group = ["Case", "Control"],
+            suffix = [".txt", ".true_values.txt"])
+    container:
+        "images/dependent_sim.sif",
+    shell:
+        "Rscript scripts/simulate_data.R"
+        
+rule simulate_time_series:
+    input:
+        "..."
+    output:
+        "time_series_data/Mouse.Cortex.k=2.txt"
+    container:
+        "images/dependent_sim.sif"
+    shell:
+        "Rscript scripts/simulate_time_series.R"
+
+rule make_cyclic_gene_list:
+    input:
+        "data/BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz"
+    output:
+        "processed/cyclic_gene_list.txt"
+    script:
+        "scripts/make_cyclic_gene_list.py"
+
+rule make_cyclops_input:
+    input:
+        expression = "simulated_data/Liver_120_normalized_simulated_time_series_k={k}.csv"
+    output:
+        expression = "processed/cyclops_input/batch={batch}.k={k}.csv"
+    params:
+        batch_size = 6
+    script:
+        "scripts/make_cyclops_input.py"
+
+rule run_cyclops:
+    input:
+        expression = "processed/cyclops_input/batch={batch}.k={k}.csv",
+        seedfile = "processed/cyclic_gene_list.txt",
+        sif = "images/cyclops.sif",
+    output:
+        output = "processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
+    params:
+        outdir = "processed/cyclops/k={k}/batch={batch}/",
+    container:
+        "file://images/cyclops.sif",
+    shell:
+        "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops"
+    
+
+rule run_cyclops_real_data:
+    input:
+        expression = "processed/Liver_normalized_time_series_data.csv",
+        seedfile = "processed/cyclic_gene_list.txt",
+        sif = "images/cyclops.sif",
+    output:
+        output = "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
+    params:
+        outdir = "processed/cyclops/real_data/",
+    container:
+        "file://images/cyclops.sif",
+    resources:
+        mem_mb = 6_000,
+    shell:
+        "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops"
