@@ -29,9 +29,9 @@ rule all:
         "simulated_data/Fly.WholeBody.Male.k=2.Control.txt",
         "simulated_data/Liver_120_simulated_time_series_k=2.csv",
         #"time_series_data/Mouse.Cortex.k=2.txt",
-        #"processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
-        #expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
-        #  k=[0,2], batch=range(0,20)),
+        "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
+        expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
+          k=[0,2], batch=range(0,20)),
 
 rule generate_sif:
     input:
