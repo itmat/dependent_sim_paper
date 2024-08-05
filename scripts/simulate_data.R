@@ -88,3 +88,5 @@ male_de_sim <- generate(male_de_rs, seed=3, name="Mouse.Cortex.Male.k=2.Case")
 
 male_indep_de_rs <- remove_dependence(male_de_rs)
 male_indep_de_sim <- generate(male_indep_de_rs, seed=4, name="Mouse.Cortex.Male.k=0.Case")
+
+# test
