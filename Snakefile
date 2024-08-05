@@ -74,8 +74,8 @@ rule simulate_mouse:
         mem_mb = 6_000
     container:
         "images/dependent_sim.sif",
-    shell:
-        "Rscript scripts/simulate_data.R"
+    script:
+        "scripts/simulate_data.R"
 
 rule simulate_fly:
     input:
@@ -91,21 +91,21 @@ rule simulate_fly:
         mem_mb = 6_000
     container:
         "images/dependent_sim.sif",
-    shell:
-        "Rscript scripts/simulate_data.fly.R"
+    script:
+        "scripts/simulate_data.fly.R"
 
 rule process_time_series:
     input:
-      "data/GSE151565_Liver-counts.csv.gz",
-      "images/dependent_sim.sif",
+        "data/GSE151565_Liver-counts.csv.gz",
+        "images/dependent_sim.sif",
     output:
-      "processed/mean_per_time_Liver.csv",
-      "processed/Liver_normalized_time_series_data.csv",
-      "processed/Liver_ZT0-counts.csv",
+        "processed/mean_per_time_Liver.csv",
+        "processed/Liver_normalized_time_series_data.csv",
+        "processed/Liver_ZT0-counts.csv",
     container:
         "images/dependent_sim.sif",
-    shell:
-      "Rscript scripts/process_time_series.R"
+    script:
+        "scripts/process_time_series.R"
 
 rule simulate_time_series:
     input:
@@ -123,8 +123,8 @@ rule simulate_time_series:
         mem_mb = 6_000
     container:
         "images/dependent_sim.sif"
-    shell:
-        "Rscript scripts/simulate_time_data.R"
+    script:
+        "scripts/simulate_time_data.R"
 
 rule make_cyclic_gene_list:
     input:
