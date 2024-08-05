@@ -70,6 +70,8 @@ rule simulate_mouse:
             k = [0,2],
             group = ["Case", "Control"],
             suffix = [".txt", ".true_values.txt"])
+    resources:
+        mem_mb = 6_000
     container:
         "images/dependent_sim.sif",
     shell:
@@ -85,6 +87,8 @@ rule simulate_fly:
             k = [0,2],
             group = ["Case", "Control"],
             suffix = [".txt", ".true_values.txt"])
+    resources:
+        mem_mb = 6_000
     container:
         "images/dependent_sim.sif",
     shell:
@@ -115,6 +119,8 @@ rule simulate_time_series:
         "simulated_data/Liver_120_normalized_simulated_time_series_k=2.csv",
         "simulated_data/Liver_120_simulated_time_series_k=0.csv",
         "simulated_data/Liver_120_normalized_simulated_time_series_k=0.csv",
+    resources:
+        mem_mb = 6_000
     container:
         "images/dependent_sim.sif"
     shell:

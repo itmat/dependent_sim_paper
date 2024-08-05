@@ -15,7 +15,7 @@ selected_metadata <- metadata[selected_samples,]
 N_SAMPLES <- 100
 male_read_counts <- read_counts[,(metadata$sex == "Male") & (metadata$concentration == 0)]
 actual_library_sizes <- male_read_counts |> apply(2, sum)
-male_rs <- get_random_structure(list(data=male_read_counts), rank=2, types="DESeq2")
+male_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, types="DESeq2")
 
 set.seed(0)
 library_sizes <- sample(actual_library_sizes / mean(actual_library_sizes), size=N_SAMPLES, replace=TRUE)

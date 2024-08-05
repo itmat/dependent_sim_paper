@@ -32,8 +32,7 @@ male_read_counts <- read.csv("processed/Liver_ZT0-counts.csv") |>
     column_to_rownames(var="raw_data.EnsemblID")
 
 # Produce simulated data
-male_rs <- get_random_structure(list(data=male_read_counts), rank=2, types="DESeq2")
-#female_rs <- get_random_structure(list(data=female_read_counts), rank=2, types="DESeq2")
+male_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, types="DESeq2")
 
 actual_library_sizes <- male_read_counts |> apply(2, sum)
 
