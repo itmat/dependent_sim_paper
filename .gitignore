@@ -1,0 +1,17 @@
+images/
+data/
+processed/
+results/
+simulated_data/
+venv/
+logs/
+plots/
+
+.Rhistory
+.RData
+.snakemake/
+
+*.swp
+*.swa
+*.swo
+*.pyc
