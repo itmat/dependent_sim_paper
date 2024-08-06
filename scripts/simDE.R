@@ -167,7 +167,7 @@ write_csv(fdr_df2, "processed/DE/Mouse.Cortex.Male.k=2.fdr.csv")
 
 fdr_lists0_fly = list()
 for (s in (1:20)) {
-    fdr_list <- simDE_analysis("Fly.WholeBody.Male.k=0", ((5*s-3):(5*s+1)))[["fdr_list"]]
+    fdr_list <- simDE_analysis("Fly.WholeBody.Male.k=0", ((5*s-3):(5*s+1)))
     fdr_lists0_fly[[s]] <- fdr_list
 }
 
@@ -183,7 +183,7 @@ write_csv(fdr_df0_fly, "processed/DE/Fly.WholeBody.Male.k=0.fdr.csv")
 # plot fdr graphs for k=2
 fdr_lists2_fly = list()
 for (s in (1:20)) {
-    fdr_list <- simDE_analysis("Fly.WholeBody.Male.k=2", ((5*s-3):(5*s+1)))[["fdr_list"]]
+    fdr_list <- simDE_analysis("Fly.WholeBody.Male.k=2", ((5*s-3):(5*s+1)))
     fdr_lists2_fly[[s]] <- fdr_list
 }
 

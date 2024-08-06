@@ -32,6 +32,7 @@ rule all:
         "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
         expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
           k=[0,2], batch=range(0,20)),
+        "processed/DE/Mouse.Cortex.Male.k=0.fdr.csv",
 
 rule generate_sif:
     input:
@@ -93,6 +94,28 @@ rule simulate_fly:
         "images/dependent_sim.sif",
     script:
         "scripts/simulate_data.fly.R"
+        
+rule sim_de:
+    input:
+        expand("simulated_data/Mouse.Cortex.Male.k={k}.{group}{suffix}",
+            k = [0,2],
+            group = ["Case", "Control"],
+            suffix = [".txt", ".true_values.txt"]),
+        expand("simulated_data/Fly.WholeBody.Male.k={k}.{group}{suffix}",
+            k = [0,2],
+            group = ["Case", "Control"],
+            suffix = [".txt", ".true_values.txt"]),
+        sif = "images/dependent_sim.sif",
+    output:
+        expand("processed/DE/{tissue}.Male.k={k}.fdr.csv",
+            k = [0,2],
+            tissue = ["Mouse.Cortex", "Fly.WholeBody"]),
+    resources:
+        mem_mb = 6_000
+    container:
+        "images/dependent_sim.sif",
+    script:
+        "scripts/simDE.R"
 
 rule process_time_series:
     input:
