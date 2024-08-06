@@ -15,3 +15,4 @@ plots/
 *.swa
 *.swo
 *.pyc
+.Rproj.user
