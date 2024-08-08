@@ -1,0 +1,97 @@
+---
+title: Generating Correlated Data for Omics Simulation
+editor: 
+  markdown: 
+    wrap: sentence
+execute:
+  echo: false
+  cache: true
+format:
+  html:
+    toc: true
+    toc-expand: true
+bibliography: references.bib
+---
+
+## Abstract
+
+Simulation of realistic omics data is a key input for benchmarking studies that help users obtain optimal computational pipelines.
+Omics data involves large numbers of measured features on each samples and these measures are generally correlated with each other.
+However, simulation too often ignores these correlations, perhaps due to the inconvenience and computational hurdles of doing so.
+We describe two approaches to solving this problem that are simple to implement and computationally very fast, both of which work by decomposing the covariance matrix into a diagonal part and a low-rank part.
+We demonstrate the importance of including correlation in two benchmarking applications.
+First, we show that variance of results from the popular DESeq2 method increases when dependence is included.
+Second, we demonstrate that a method, CYCLOPS, for inferring circadian time of collection from transcriptomics actually improves its performance when dependence is included.
+We provide an R package, dependentsimr, that has efficient implementations of these methods and can generate dependent data with arbitrary distributions, including discrete (binary, ordered categorical, Poisson, negative binomial), continuous (normal), or with an empirical distribution.
+
+## Introduction
+
+Omics data is in the “p \>\> n” regime where there are fewer samples than measurements per sample.
+This creates dual challenges in generating realistic simulated data for the purposes of benchmarking.
+First, there isn’t enough data to be able to compute a dependence structure (e.g., a full-rank correlation matrix).
+Second, generating omics-scale data with a specified correlation matrix is slow due to the typical $O(p^3)$ nature of these algorithms.
+These often mean that simulators assume independence of the measurements, which does not reflect reality.
+
+Recently, we wrote guidelines for performing omics benchmarking [@Brooks2024] and encouraged authors to ensure that any simulated data includes realistic correlation and dependence of measurements within a sample.
+However, this highlighted that one reason this is often neglected is that there is relatively little guidance for how to achieve it and that existing solutions are cumbersome.
+
+Here, we give a simple solution this problem by using a correlation matrix that decomposes into a diagonal part and a low-rank part to both approximate realistic dependencies in a real data set and generate simulated data mimicking the real data.
+Using a NORTA (Normal to Anything) approach, the marginal (univariate) distributions can have realistic forms.
+We implement this strategy as an R package which supports normal, Poisson, DESeq2-based (negative binomial with sample-specific size factors), and empirical (for ordinal data) marginal distributions.
+This makes it particularly suited to RNA-seq data but also widely applicable.
+
+We show two applications which demonstrate the importance of including dependence of measurements in simulated data when benchmarking computational pipelines.
+First, we simulate RNA-seq data with differential expression between two conditions.
+Using DESeq2 to determine the differentially expressed genes, we found that dependence had little impact on the accuracy of reported p-values but increased the variance of those estimates, meaning that experiments simulated with dependence were more likely to be conservative and more likely to be anti-conservative compared to simulations of independent data.
+Second, we simulated a time series of RNA-seq data points and used the CYCLOPS method to infer collection time from the RNA-seq data, without time labels.
+Surprisingly, we found that including dependence in the data set resulted in improved performance with CYCLOPS.
+
+## Results
+
+### Comparison to Real Data
+
+```{r}
+#| include: false
+source("compare_to_real.R")
+```
+
+We used mouse liver RNA-seq data set from accession GSE77221[@Weger2019] where we expected a significant amount of gene-gene correlation due to the samples having been collected throughout the course of a day.
+We used this data to prime our simulation and compared real and simulated data sets, both with 12 samples, to each other.
+We repeated the simulations a total of 8 times to estimate variance.
+The simulations were then repeated without any dependence for comparison.
+
+Simulated data captures the genes' mean and variance accurately (@fig-compare-to-real a-b).
+Moreover, we computed the gene-gene correlation on a random subset of `r N_rows_gene_corr` high-expressed genes.
+Since only 12 samples are in each real or simulated data set, correlation estimates are very noisy.
+However, the distribution of correlations across all pairs of these genes is much closer to that of real data when simulated with dependence than without (@fig-compare-to-real c).
+
+Next, we compared the simulations with and without dependence to the real data set when projected onto the top two principal components of the real data set (@fig-compare-to-real d).
+The simulations with dependence are distributed around the entire space like the real data, but the independent simulations have unrealistically low variance in these components, clustering tightly around the origin.
+Lastly, we compared the PCA of each simulated data set considered separately from the real data.
+Simulations with independent data showed unrealistically low levels of variance in top principal components, but dependent simulations actually show too high elevations of variance in top components.
+This is a consequence of our PCA strategy: since variance in the direction of the real data set's top principal component is exactly matched, the simulated data set's top principal component will be even larger than that.
+
+```{r}
+#| label: fig-compare-to-real
+#| fig-cap: !expr glue::glue("Comparison to real data run on a mouse liver example from GSE77221. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled. The line of equality is marked in black. Points are colored according to the density of points in their region. (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). A random sample of {N_rows_gene_corr} genes with at least {HIGH_EXPR_CUTOFF} reads was used. Values on the diagonal line indicate a match between the simulated and real data sets. (d) Projections onto the top two principal components of the real data set for both real and simulated data. All 8 simulations (96 samples total for each of dependent and independent simulations) shown. (e) Principal component analysis was performed on all data sets and the variance captured by the top components is shown. Unlike (d), these components were fit from each data set considered separately instead of reusing the weights from the real data.")
+#| fig-width: 10
+#| fig-height: 10
+compare_to_real_plot
+```
+
+### DESeq2 Application
+
+TODO Show performance of DESeq2 both with and without dependence and a figure
+
+### CYCLOPS Application
+
+TODO Show performance of CYCLOPS with and without dependence and a figure
+
+## Methods
+
+TODO: how it works
+
+## Discussion
+
+We present `dependentsimr`, an R package that generates omics-scale data with realistic correlation.
+TODO: limitations TODO: alternatives

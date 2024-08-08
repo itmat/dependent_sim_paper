@@ -6,6 +6,7 @@ simulated_data/
 venv/
 logs/
 plots/
+manuscript/*cache
 
 .Rhistory
 .RData
