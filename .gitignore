@@ -8,6 +8,7 @@ logs/
 plots/
 manuscript/*cache
 manuscript/paper_files
+manuscript/html
 .cache
 
 .Rhistory
