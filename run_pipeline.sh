@@ -2,6 +2,7 @@
 module load /project/itmatlab/sharedmodules/use.shared
 module load python/3.10
 module load R/4.3
+module load curl-7.49.0
 source venv/bin/activate
 
 

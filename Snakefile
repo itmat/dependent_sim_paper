@@ -33,12 +33,15 @@ rule all:
         expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
           k=[0,2], batch=range(0,20)),
         "processed/DE/Mouse.Cortex.Male.k=0.fdr.csv",
+        "manuscript/html",
 
 rule generate_sif:
     input:
         "containers/{container}.def"
     output:
         "images/{container}.sif"
+    resources:
+        mem_mb = 6_000
     shell:
         "apptainer build {output} {input}"
 
@@ -196,3 +199,15 @@ rule run_cyclops_real_data:
         mem_mb = 6_000,
     shell:
         "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops"
+
+rule generate_manuscript:
+    input:
+        "manuscript/compare_to_real.R",
+        index = "manuscript/paper.qmd",
+        sif = "images/quarto.sif",
+    output:
+        directory("manuscript/html")
+    container:
+        "images/quarto.sif"
+    shell:
+        "quarto render {input.index} --output-dir html --to html"

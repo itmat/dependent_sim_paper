@@ -7,8 +7,7 @@ From: r-base:4.3.1
     apt-get install -y r-cran-tidyverse r-cran-remotes r-bioc-deseq2 r-cran-mass r-cran-testthat
 
     R -e 'remotes::install_github("tgbrooks/dependent_sim")'
-    #R -e 'install.packages(c("tibble", "dplyr", "tidyr", "ggplot2", "readr", "tidyverse"))'
-    #R -e 'BiocManager::install(c("DESeq2", "S4Vectors", "SummarizedExperiment"))'
+    R -e 'install.packages(c("corpcor"))'
 
 %help
     R 4.3.1 with the dependent_sim package and other utilities installed.

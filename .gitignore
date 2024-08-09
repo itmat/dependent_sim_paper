@@ -7,6 +7,8 @@ venv/
 logs/
 plots/
 manuscript/*cache
+manuscript/paper_files
+.cache
 
 .Rhistory
 .RData
