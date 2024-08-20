@@ -137,8 +137,6 @@ rule simulate_time_series:
     input:
         "processed/Liver_ZT0-counts.csv",
         "processed/mean_per_time_Liver.csv",
-        "processed/GSE151923_sample_metadata.txt",
-        "data/GSE151923_metaReadCount_ensembl.txt.gz",
         "images/dependent_sim.sif",
     output:
         "simulated_data/Liver_120_simulated_time_series_k=2.csv",

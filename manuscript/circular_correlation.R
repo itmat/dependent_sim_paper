@@ -3,6 +3,7 @@ library(tibble)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(patchwork)
 
 # formula for the circular correlation
 get_cir_corr <- function(X, Y) {
@@ -34,7 +35,7 @@ get_cir_corr <- function(X, Y) {
 corrs <- tibble(k0 = rep(0, 20), k2 = rep(0, 20))
 for (j in (0:19)) {
     #k=0
-    phaselist <- read_csv(paste0("processed/cyclops/k=0/batch=", j, "/cyclops_estimated_phaselist.csv"))
+    phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=0/batch=", j, "/cyclops_estimated_phaselist.csv"))
     for (i in (1:48)) {
         phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
             substring(3)
@@ -44,7 +45,7 @@ for (j in (0:19)) {
     corrs$k0[j+1] <- get_cir_corr(phaselist$new_ID, phaselist$phase)
     
     #k=2
-    phaselist <- read_csv(paste0("processed/cyclops/k=2/batch=", j, "/cyclops_estimated_phaselist.csv"))
+    phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=2/batch=", j, "/cyclops_estimated_phaselist.csv"))
     for (i in (1:48)) {
         phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
             substring(3)
@@ -62,7 +63,7 @@ circular_correlation_violin <- ggplot(corrs_new, aes(k, abs(value))) +
 circular_correlation_violin
 
 # rainbow plots visualizing true and estimated phases
-phaselist <- read_csv(paste0("processed/cyclops/k=0/batch=", 5, "/cyclops_estimated_phaselist.csv"))
+phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=0/batch=", 5, "/cyclops_estimated_phaselist.csv"))
 for (i in (1:48)) {
     phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
         substring(3)
@@ -83,7 +84,7 @@ phaseplot_0
 #       scale = 1, width = 5, height = 4, units = "in")
 
 
-phaselist <- read_csv(paste0("processed/cyclops/k=2/batch=", 6, "/cyclops_estimated_phaselist.csv"))
+phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=2/batch=", 6, "/cyclops_estimated_phaselist.csv"))
 for (i in (1:48)) {
     phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
         substring(3)
@@ -102,3 +103,5 @@ phaseplot_2 <- ggplot(phaselist,aes(cos_estimated_phase,sin_estimated_phase))+
 phaseplot_2
 #ggsave(paste0("plots/k=2_batch=", j, "_scatter.png"),
 #       scale = 1, width = 5, height = 4, units = "in")
+
+cyclops_plot <- circular_correlation_violin / (phaseplot_0 | phaseplot_2) + plot_annotation(tag_levels="a")

@@ -4,29 +4,6 @@ library(tibble)
 library(DESeq2)
 library(tidyverse)
 
-metadata <- read.delim("processed/GSE151923_sample_metadata.txt", sep="\t")
-read_counts <- read.delim("data/GSE151923_metaReadCount_ensembl.txt.gz", sep="\t")
-
-row.names(read_counts) <- read_counts[,1]
-read_counts <- read_counts[,6:ncol(read_counts)]
-
-# Drop NAs - the data file is missing part of the very last row, giving NAs
-read_counts <- read_counts[!apply(is.na(read_counts), 1, any),]
-
-# Drop a sample that has very low read counts
-read_depth <- apply(read_counts, 2, sum)
-READ_DEPTH_CUTOFF = 10e6
-read_counts <- read_counts[,read_depth > READ_DEPTH_CUTOFF]
-
-# Separate by sex
-sex <- vapply(colnames(read_counts),
-    function(id) {
-        return(metadata[metadata["sample_id"] == id, "sex"])
-    }, "")
-
-male_read_counts <- read_counts[,sex == 'male']
-female_read_counts <- read_counts[,sex == 'female']
-
 # use ZT0 of raw time series data to get dependence structure
 male_read_counts <- read.csv("processed/Liver_ZT0-counts.csv") |> 
     column_to_rownames(var="raw_data.EnsemblID")

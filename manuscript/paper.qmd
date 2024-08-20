@@ -81,11 +81,45 @@ compare_to_real_plot
 
 ### DESeq2 Application
 
-TODO Show performance of DESeq2 both with and without dependence and a figure
+We benchmark DESeq2, a popular differential expression analysis tool, using data sets simulated with dependence and ones simulated without dependence to compare its performances on both. We use a mouse cortex data set GSE151923 and select samples from male mice to simulate 20 control samples with rank $k=2$ dependence structure, and 20 control samples assuming independence of the genes. We then randomly select 5% of the genes to be differential expressed, and simulate 20 "experimental" samples each with and and without dependence.
+
+Finally, we run DESeq2 on the two simulated experiments and compare the output FDR with the true percentages of genes that are differential expressed (@fig-DESeq2 a-b). We observe that DESeq2 is slightly anti-conservative on both data sets, with similar mean true FDRs for each estimated FDR cutoff. However, there is a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it potentially performs less reliably on data sets with gene-gene dependence, as in real data sets. We speculate that this is due to DESeq2's assumption that the gene expressions are independent.
+
+To demonstrate the application of our simulation method for another organism, we also simulate data sets using a fly whole body RNA-Seq data set GSE81142. We select samples of male flies without treatment and after at least 2 hours of feeding to infer the dependence structure of the quantified genes. We then simulate differential expression experiments with and without dependence as above, with 20 samples for each condition. We observe a similar result (@fig-DESeq2 c-d) as for the mouse cortex data sets.
+
+```{r}
+#| include: false
+source("DE_plots.R")
+```
+
+```{r}
+#| label: fig-DESeq2
+#| fig-cap: "Performance of DESeq2 on simulated datasets. (a-b) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923, Wang et al. 2022), (a) without dependence and (b) with dependence. (c-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (c) without dependence and (d) with dependence."
+#| fig-width: 7
+#| fig-height: 6
+DESeq2_plot
+```
 
 ### CYCLOPS Application
 
-TODO Show performance of CYCLOPS with and without dependence and a figure
+We further use our simulation method to benchmark CYCLOPS (Anafi et al. 2017), which uses an autoencoder to identify circular structures in the data and infer relative times for a set of unlabeled samples. We use a mouse liver time series data set (GSE151565, Aaronson et al. 2020), which contains 12 samples for ZT0, and 6 samples each for ZT3, ZT6, ZT9, ZT12, ZT15, ZT18 and ZT21. We compute the dependence structure of the genes as well as the variances of marginal distributions using the ZT0 samples, and compute the means of gene expressions at each time point. We then simulate 20 time series data sets with rank $2$ dependence structure, each with 8 time points and 6 samples per time point, and 20 such data sets without dependence.
+
+We run CYCLOPS on each data set with a list of cyclic mouse liver genes (JTK p-value $<0.05$), which yields an estimated relative phase for each sample. For the evaluation metric for CYCLOPS' performance, we use the circular correlation, defined as follows:
+$$\rho = \frac{\sum_{1\leq i<j\leq n}sin(X_i-X_j)sin(Y_i-Y_j)}{(\sum_{1\leq i<j\leq n}sin(X_i-X_j)^2)^{1/2}(\sum_{1\leq i<j\leq n}sin(Y_i-Y_j)^2)^{1/2}},$$
+where $n$ is the number of samples, $X_i$ and $Y_i$ are the true phase and CYCLOPS-estimated phase respectively for the $i$-th sample. $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates accurate predictions by CYCLOPS.
+
+We find that CYCLOPS performs better overall on simulated time series data sets with dependence than on those without dependence (@fig-CYCLOPS), indicating that the presence of gene-gene dependence is essential for CYCLOPS' performance.
+
+```{r}
+#| include: false
+source("circular_correlation.R")
+```
+
+```{r}
+#| label: fig-CYCLOPS
+#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565, Aaronson et al. 2020). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with and without dependence. (b-c) Examples of CYCLOPS estimated phases on a simulated data set (b) without dependence and (c) with dependence."
+cyclops_plot
+```
 
 ## Methods
 
