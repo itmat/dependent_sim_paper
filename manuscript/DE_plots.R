@@ -65,5 +65,5 @@ fly_fdr_2 <- ggplot(fdr_df2_fly, aes(cutoff, mean, ymin=lower, ymax=upper)) +
     scale_y_log10() +
     coord_cartesian(xlim = c(0.001, 1), ylim= c(0.001,1))
 
-DESeq2_plot <- (mouse_cortex_fdr_0 | mouse_cortex_fdr_2) / (fly_fdr_0 | fly_fdr_2) + plot_annotation(tag_levels="a")
-DESeq2_plot
+DESeq2_fdr_plot <- (fly_fdr_0 | fly_fdr_2) / (mouse_cortex_fdr_0 | mouse_cortex_fdr_2) + plot_annotation(tag_levels="a")
+DESeq2_fdr_plot
