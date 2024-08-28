@@ -31,11 +31,11 @@ get_cir_corr <- function(X, Y) {
         
 }
 
-# compute circular correlation between CYCLOP-estimated phases and true phases for all 40 datasets
+# compute circular correlation between CYCLOP-estimated phases and true_counts_counts_counts phases for all 40 datasets
 corrs <- tibble(k0 = rep(0, 20), k2 = rep(0, 20))
 for (j in (0:19)) {
     #k=0
-    phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=0/batch=", j, "/cyclops_estimated_phaselist.csv"))
+    phaselist <- read_csv(paste0("../processed/cyclops/k=0/batch=", j, "/cyclops_estimated_phaselist.csv"))
     for (i in (1:48)) {
         phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
             substring(3)
@@ -45,7 +45,7 @@ for (j in (0:19)) {
     corrs$k0[j+1] <- get_cir_corr(phaselist$new_ID, phaselist$phase)
     
     #k=2
-    phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=2/batch=", j, "/cyclops_estimated_phaselist.csv"))
+    phaselist <- read_csv(paste0("../processed/cyclops/k=2/batch=", j, "/cyclops_estimated_phaselist.csv"))
     for (i in (1:48)) {
         phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
             substring(3)
@@ -62,20 +62,20 @@ circular_correlation_violin <- ggplot(corrs_new, aes(k, abs(value))) +
     ylab("absolute circular correlation")
 circular_correlation_violin
 
-# rainbow plots visualizing true and estimated phases
-phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=0/batch=", 5, "/cyclops_estimated_phaselist.csv"))
+# rainbow plots visualizing true_counts_counts_counts and estimated phases
+phaselist <- read_csv(paste0("../processed/cyclops/k=0/batch=", 5, "/cyclops_estimated_phaselist.csv"))
 for (i in (1:48)) {
     phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
         substring(3)
 }
 phaselist$new_ID <- as.numeric(phaselist$ID)/12*pi
-phaselist$true_time <- as.numeric(phaselist$ID)
+phaselist$true_counts_counts_counts_time <- as.numeric(phaselist$ID)
 
 phaselist$sin_estimated_phase <- sin(phaselist$phase)
 phaselist$cos_estimated_phase <- cos(phaselist$phase)
 phaseplot_0 <- ggplot(phaselist,aes(cos_estimated_phase,sin_estimated_phase))+
     scale_color_gradientn(colors = rainbow(8), limits=c(0, 24)) +
-    geom_point(aes(colour=true_time)) +
+    geom_point(aes(colour=true_counts_counts_counts_time)) +
     xlim(-1, 1) +
     ylim(-1, 1) +
     ggtitle("without dependence")
@@ -84,19 +84,19 @@ phaseplot_0
 #       scale = 1, width = 5, height = 4, units = "in")
 
 
-phaselist <- read_csv(paste0("~/dependent_sim/dependent_sim_paper/processed/cyclops/k=2/batch=", 6, "/cyclops_estimated_phaselist.csv"))
+phaselist <- read_csv(paste0("../processed/cyclops/k=2/batch=", 6, "/cyclops_estimated_phaselist.csv"))
 for (i in (1:48)) {
     phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
         substring(3)
 }
 phaselist$new_ID <- as.numeric(phaselist$ID)/12*pi
-phaselist$true_time <- as.numeric(phaselist$ID)
+phaselist$true_counts_counts_counts_time <- as.numeric(phaselist$ID)
 
 phaselist$sin_estimated_phase <- sin(phaselist$phase)
 phaselist$cos_estimated_phase <- cos(phaselist$phase)
 phaseplot_2 <- ggplot(phaselist,aes(cos_estimated_phase,sin_estimated_phase))+
     scale_color_gradientn(colors = rainbow(8), limits=c(0, 24)) +
-    geom_point(aes(colour=true_time)) +
+    geom_point(aes(colour=true_counts_counts_counts_time)) +
     xlim(-1, 1) +
     ylim(-1, 1) +
     ggtitle("with dependence")

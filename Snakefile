@@ -201,6 +201,9 @@ rule run_cyclops_real_data:
 rule generate_manuscript:
     input:
         "manuscript/compare_to_real.R",
+        "processed/DE/Mouse.Cortex.Male.k=0.fdr.csv",
+        "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
+        expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv", k=[0,2], batch=range(0,20)),
         index = "manuscript/paper.qmd",
         sif = "images/quarto.sif",
     output:
