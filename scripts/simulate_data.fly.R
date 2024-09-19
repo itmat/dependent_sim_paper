@@ -3,6 +3,7 @@ library(tidyr)
 library(dplyr)
 library(tibble)
 library(DESeq2)
+library(rlang)
 
 read_counts <- read.delim("data/GSE81142.counts.txt.gz", row.names=1)
 metadata <- read.delim("processed/GSE81142_sample_metadata.txt")

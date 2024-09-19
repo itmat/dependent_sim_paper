@@ -4,6 +4,7 @@ library(DESeq2)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(rlang)
 
 simDE_analysis <- function(filename, samples) {
 

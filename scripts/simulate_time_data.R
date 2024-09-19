@@ -3,6 +3,7 @@ library(dplyr)
 library(tibble)
 library(DESeq2)
 library(tidyverse)
+library(rlang)
 
 # use ZT0 of raw time series data to get dependence structure
 male_read_counts <- read.csv("processed/Liver_ZT0-counts.csv") |> 
