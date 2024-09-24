@@ -65,7 +65,7 @@ source("compare_to_real.R")
 ```
 
 <!-- TODO which dataset do we want to use here? -->
-We used mouse liver RNA-seq data set from accession GSE77221[@Weger2019] where we expected a significant amount of gene-gene correlation due to the samples having been collected throughout the course of a day.
+We used mouse liver RNA-seq data set from accession GSE77221 [@Weger2019] where we expected a significant amount of gene-gene correlation due to the samples having been collected throughout the course of a day.
 We used this data to prime our simulation and compared real and simulated data sets, both with 12 samples, to each other.
 We repeated the simulations a total of 8 times to estimate variance.
 The simulations were then repeated without any dependence for comparison.
@@ -91,7 +91,7 @@ compare_to_real_plot
 
 ### DESeq2 Application
 
-We benchmark DESeq2 <!-- TODO cite -->, a popular differential expression analysis tool, using data sets simulated with dependence and ones simulated without dependence to compare its performances on both. We use a fly whole body RNA-Seq data set GSE81142 and select samples of male flies without treatment and after at least 2 hours of feeding to simulate 20 control samples with rank $k=2$ dependence structure, and 20 control samples assuming independence of the genes. We then randomly select 5% of the genes to be up or down regulated, with $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, and simulate 20 "experimental" samples each with and and without dependence.
+We benchmark DESeq2 [@Love2014], a popular differential expression analysis tool, using data sets simulated with dependence and ones simulated without dependence to compare its performances on both. We use a fly whole body RNA-Seq data set GSE81142 and select samples of male flies without treatment and after at least 2 hours of feeding to simulate 20 control samples with rank $k=2$ dependence structure, and 20 control samples assuming independence of the genes. We then randomly select 5% of the genes to be up or down regulated, with $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, and simulate 20 "experimental" samples each with and and without dependence.
 
 Finally, we run DESeq2 on the two simulated experiments and compare the output false discovery rate (FDR) with the true percentages of genes that are differential expressed (@fig-DESeq2 a-b). We observe that DESeq2 is slightly anti-conservative on both data sets, with similar mean true FDRs for each estimated FDR cutoff. However, there is a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it potentially performs less reliably on data sets with gene-gene dependence, as in real data sets. We speculate that this is due to DESeq2's assumption that the gene expressions are independent.
 
@@ -112,7 +112,7 @@ DESeq2_fdr_plot
 
 ### CYCLOPS Application
 
-We further use our simulation method to benchmark CYCLOPS <!-- TODO cite -->, which infer relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse liver time series data set (GSE151565, Aaronson et al. 2020), which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point. We then use these to simulate 20 time series data sets with rank $2$ dependence structure, each with 8 time points and 6 samples per time point, and 20 such data sets without dependence.
+We further use our simulation method to benchmark CYCLOPS [@Anafi2017], which infer relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse liver time series data set (GSE151565, Aaronson et al. 2020), which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point. We then use these to simulate 20 time series data sets with rank $2$ dependence structure, each with 8 time points and 6 samples per time point, and 20 such data sets without dependence.
 
 We run CYCLOPS on each data set with a list of cyclic mouse liver genes (JTK p-value $<0.05$), which yields an estimated relative time for each sample. For the evaluation metric for CYCLOPS' performance, we use the circular correlation, defined as follows:
 $$\rho = \frac{\sum_{1\leq i<j\leq n}sin(X_i-X_j)sin(Y_i-Y_j)}{(\sum_{1\leq i<j\leq n}sin(X_i-X_j)^2)^{1/2}(\sum_{1\leq i<j\leq n}sin(Y_i-Y_j)^2)^{1/2}},$$
@@ -207,6 +207,7 @@ Therefore, we use a stochastic gradient descent method that we recently describe
 Since the dataset has been normalized, $c$ will be close to one and $e_i \Sigma e_i^T \approx 1$.
 
 Specifically, we do:
+
 1. Set $U$ to be the $p \times k$ matrix with columns $u_i$, the left singular vectors of $Z$.
 2. Compute $w_1, \ldots, w_k$ and $c$ by stochastic gradient descent minimizing $\sum_{i} (E[\lambda'_i] - \lambda_i)^2$ for $\Sigma$ diagonal with entries $w_1, \ldots, w_k, c, \ldots, c$.
 4. Set $W$ diagonal with the entries $w_1, \ldots, w_k$.
@@ -214,13 +215,14 @@ Specifically, we do:
 
 ### Corpcor Method
 
-The `corpcor` package <!-- TODO cite --> computes a James-Stein type shrinkage estimator for the covariance matrix.
+The `corpcor` package [@SchaferStrimmer2005; @OpgenRheinStrimmer2007] computes a James-Stein type shrinkage estimator for the covariance matrix.
 For large $p$, this greatly improves the estimate of the covariance matrix by introducing a little bias towards zero correlations and equal variances of genes.
 It computes optimal values of $\lambda_1$, and $\lambda_2$, its two regularization coefficients.
 It then uses $\lambda_1$ to linearly interpolate the sample covariance matrix towards the identity matrix $I$ and $\lambda_2$ to interpolate the vector of variances towards the median variance value.
 Since the sample covariance matrix is rank at most $n$, we again obtain a matrix of the form $\Sigma = D + UWU^T$.
 
 This algorithm is:
+
 1. Compute the $\lambda_1$ and $\lambda_2$ values from `corpcor::estimate.lambda` and `corpcor::estimate.lambda.var` functions on $Z$, respectively.
 2. Set $D$ to be diagonal with $D_{ii} = \sqrt{\lambda_1} (\lambda_2 \sigma_{med} + (1 - \lambda_2) \sigma_i)$ where $\sigma_i$ is the standard deviation of the $Z_{i\cdot}$ and $\sigma_{med}$ is the median of the $\sigma_i$.
 3. Set $U$ to be $\sqrt{1-\lambda} S Z / \sqrt{n-1}$ where $S$ is the diagonal matrix with $S_{ii} = \lambda_2 \sigma_{med} / \sigma_i + (1 - \lambda_2)$.
@@ -246,7 +248,7 @@ We highlight some alternatives that have been taken below.
 
 ### Alternatives
 
-The R package [SPsimSeq](https://github.com/CenterForStatistics-UGent/SPsimSeq) <!-- TODO cite --> provides a dedicated RNA-seq and scRNA-seq simulator using a NORTA approach to simulate gene dependence.
+The R package [SPsimSeq](https://github.com/CenterForStatistics-UGent/SPsimSeq) [@Assefa2020] provides a dedicated RNA-seq and scRNA-seq simulator using a NORTA approach to simulate gene dependence.
 In contrast to this package, it uses WGCNA to determine the correlation matrix, which is a gene network approach.
 However, this method takes significant computational resources.
 Indeed, the `SPsimSeq` paper generated data for just 5000 genes based on a randomly sampled 5000 gene subset of the RNA-seq data and our attempts to use `SPsimSeq` to generate a full sample exhausted the memory of a 24GB computer.
@@ -254,7 +256,7 @@ In contrast, our method runs in seconds to generate a 40,000 gene samples on the
 `SPsimSeq` is more specialized and full-featured for RNA-seq simulation, providing, for example, native differential expression (DE) options.
 In contrast, our `dependentsimr` package requires manually setting marginal expression values to inject DE, but also supports other marginal distributions for situations outside of RNA-seq.
 
-The [scDesign2](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02367-2) simulator <!-- TODO cite --> for scRNA-seq uses NORTA and, like our method, uses the approach of estimating the correlation matrix from the normalized dataset.
+The [scDesign2](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02367-2) simulator [@Sun2021] for scRNA-seq uses NORTA and, like our method, uses the approach of estimating the correlation matrix from the normalized dataset.
 However, it limits this correlation matrix to top-expressed genes.
 
 Other Gaussian copula-based R packages that may be applicable, at least for datasets with smaller numbers of features, include `bindata`, `GenOrd`, and `SimMultiCorrData`, the last of these being the most comprehensive.
