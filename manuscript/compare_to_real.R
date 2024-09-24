@@ -16,15 +16,12 @@ HIGH_EXPR_CUTOFF <- 300
 TYPE_ORDER <- c("real", "indep", "pca", "wishart", "corpcor")
 TYPE_COLORS <- RColorBrewer::brewer.pal(length(TYPE_ORDER), "Set2")
 
-## Generate the simulated data
 # Load the real data ---------------------------------
-# from GEO: GSE77221
 raw <- read_tsv("../data/GSE151923_metaReadCount_ensembl.txt.gz") |>
   select(-GeneName, -Description, -Chromosome, -Strand)
 read_counts <- as.matrix(raw[,2:13])
 rownames(read_counts) <- raw$GeneID
 
-#head(Weger18)
 actual_library_sizes <- apply(read_counts, 2, sum)
 
 # Run dependentsimr on this data --------------------
@@ -78,6 +75,31 @@ g2<-ggplot(marg_dist|> filter(real_mean > 0.1))+
   geom_abline(slope=1, intercept=0) +
   scale_color_viridis_c(option="inferno")
 
+# Plot the top principal components --------------------
+constant_rows <- apply(read_counts, 1, function(x) all(x - mean(x) == 0))
+pca <- prcomp(t(scaled_read_data[!constant_rows,]), rank.=2, scale.=TRUE)
+projected_read_data <- predict(pca, t(scaled_read_data[!constant_rows, ]))
+projected_draws <- predict(pca, t(scaled_draws[!constant_rows, ]))
+projected_corpcor <- predict(pca, t(scaled_draws_corpcor[!constant_rows, ]))
+projected_wishart <- predict(pca, t(scaled_draws_wishart[!constant_rows, ]))
+projected_indep_draws <- predict(pca, t(scaled_indep_draws[!constant_rows, ]))
+both_data <- data.frame(list(
+  PC1 = c(projected_read_data[,"PC1"], projected_draws[,"PC1"], projected_corpcor[,"PC1"], projected_wishart[,"PC1"], projected_indep_draws[,"PC1"]),
+  PC2 = c(projected_read_data[,"PC2"], projected_draws[,"PC2"], projected_corpcor[,"PC2"], projected_wishart[,"PC2"], projected_indep_draws[,"PC2"]),
+  type = c(
+    rep("real", nrow(projected_read_data)),
+    rep("pca", nrow(projected_draws)),
+    rep("corpcor", nrow(projected_draws)),
+    rep("wishart", nrow(projected_draws)),
+    rep("indep", nrow(projected_indep_draws))
+  )
+)) %>%
+  mutate(type = factor(type, levels=TYPE_ORDER, ordered=TRUE))
+#both_data$type <- factor(both_data$type, levels=c("real", "dependent sim", "independent sim"))
+g3<-ggplot(data = both_data, aes(x=PC1, y=PC2,color=type)) +
+   geom_point() +
+  scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="type")
+
 # Plot gene-gene correlation ---------------------------
 high_expr_rows <- which(apply(read_counts, 1, mean) > HIGH_EXPR_CUTOFF)
 distinct_cor <- function(x) {
@@ -108,34 +130,10 @@ for (i in 1:100) {
 corr_data <- do.call(rbind, corr_data)
 corr_data_long <- corr_data |> pivot_longer(everything(), names_to="type", values_to="corr") %>%
   mutate(type=factor(type, levels=TYPE_ORDER, ordered=TRUE))
-g3 <- ggplot(data = corr_data_long) +
+g4 <- ggplot(data = corr_data_long) +
   geom_density(aes(x = corr, color=type), linewidth=1) +
   scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="type")
 
-# Plot the top principal components --------------------
-constant_rows <- apply(read_counts, 1, function(x) all(x - mean(x) == 0))
-pca <- prcomp(t(scaled_read_data[!constant_rows,]), rank.=2, scale.=TRUE)
-projected_read_data <- predict(pca, t(scaled_read_data[!constant_rows, ]))
-projected_draws <- predict(pca, t(scaled_draws[!constant_rows, ]))
-projected_corpcor <- predict(pca, t(scaled_draws_corpcor[!constant_rows, ]))
-projected_wishart <- predict(pca, t(scaled_draws_wishart[!constant_rows, ]))
-projected_indep_draws <- predict(pca, t(scaled_indep_draws[!constant_rows, ]))
-both_data <- data.frame(list(
-  PC1 = c(projected_read_data[,"PC1"], projected_draws[,"PC1"], projected_corpcor[,"PC1"], projected_wishart[,"PC1"], projected_indep_draws[,"PC1"]),
-  PC2 = c(projected_read_data[,"PC2"], projected_draws[,"PC2"], projected_corpcor[,"PC2"], projected_wishart[,"PC2"], projected_indep_draws[,"PC2"]),
-  type = c(
-    rep("real", nrow(projected_read_data)),
-    rep("pca", nrow(projected_draws)),
-    rep("corpcor", nrow(projected_draws)),
-    rep("wishart", nrow(projected_draws)),
-    rep("indep", nrow(projected_indep_draws))
-  )
-)) %>%
-  mutate(type = factor(type, levels=TYPE_ORDER, ordered=TRUE))
-#both_data$type <- factor(both_data$type, levels=c("real", "dependent sim", "independent sim"))
-g4<-ggplot(data = both_data, aes(x=PC1, y=PC2,color=type)) +
-   geom_point() +
-  scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="type")
 
 # Compare SVD with and without dependence ----------------
 PCA <- function(data) {

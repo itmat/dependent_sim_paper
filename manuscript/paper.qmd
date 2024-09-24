@@ -47,7 +47,7 @@ First, the 'PCA' method uses principal component analysis (PCA) and pick the low
 Second, the 'spiked Wishart' method fits $k$ components such that simulations with the same number of samples as the reference dataset will have, on average, the same PCA component variances as the reference 
 Unlike 'PCA', these variances are computed with resepect to the simulated data's own PCA and not using the PCA weights of the reference dataset.
 Third, the 'corpcor' method uses the popular R library `corpcor`, which implements a James-Stein type shrinkage estimator for the covariance matrix as a linear interpolation of the sample covariance matrix and a diagonal matrix.
-No method exactly captures the input data, indicating room for future research, but all improve upon a the common approach of assuming independence.
+No method exactly captures the input data, indicating room for future research, but all improve upon the common approach of assuming independence.
 
 We show two applications which demonstrate the importance of including dependence of measurements in simulated data when benchmarking computational pipelines.
 First, we simulate RNA-seq data with differential expression between two conditions.
@@ -64,22 +64,27 @@ Surprisingly, we found that including dependence in the data set resulted in imp
 source("compare_to_real.R")
 ```
 
-<!-- TODO which dataset do we want to use here? -->
-We used mouse liver RNA-seq data set from accession GSE77221 [@Weger2019] where we expected a significant amount of gene-gene correlation due to the samples having been collected throughout the course of a day.
-We used this data to prime our simulation and compared real and simulated data sets, both with 12 samples, to each other.
-We repeated the simulations a total of 8 times to estimate variance.
-The simulations were then repeated without any dependence for comparison.
+We chose as a references dataset, 12 mouse liver RNA-seq samples from accession GSE151923 [@Wang2022].
+We then simulated data mimicking this reference using all three simulation methods (PCA, spiked Wishart, and corpcor) as well as a simulation with independent genes.
+We repeated the simulations, each of 12 samples, a total of 8 times to estimate variance.
+For the PCA method, we used $k=2$ and for the spiked Wishart, $k=11$.
+The coprcor method always uses the full data matrix, analogous to $k=11$.
+Note that PCA method must use a rank $k<11$ in order to generate full-rank data, see Methods, so these parametesr are not directly comparable across methods.
 
 Simulated data captures the genes' mean and variance accurately (@fig-compare-to-real a-b).
-Moreover, we computed the gene-gene correlation on pairs of high-expressed genes.
-Since only 12 samples are in each real or simulated data set, correlation estimates are very noisy.
-However, the distribution of correlations across all pairs of these genes is much closer to that of real data when simulated with dependence than without (@fig-compare-to-real c).
-
-Next, we compared the simulations with and without dependence to the real data set when projected onto the top two principal components of the real data set (@fig-compare-to-real d).
+Next, we compared to the real data set when projected onto the top two principal components of the real data set (@fig-compare-to-real c).
 The simulations with dependence are distributed around the entire space like the real data, but the independent simulations have unrealistically low variance in these components, clustering tightly around the origin.
-Lastly, we compared the PCA of each simulated data set considered separately from the real data.
-Simulations with independent data showed unrealistically low levels of variance in top principal components, but dependent simulations actually show too high elevations of variance in top components.
-This is a consequence of our PCA strategy: since variance in the direction of the real data set's top principal component is exactly matched, the simulated data set's top principal component will be even larger than that.
+
+Then, we computed the gene-gene correlation on pairs of high-expressed genes (at least 300 mean reads).
+The simulation with independence showed the least levels of gene-gene correlations (@fig-compare-to-real d).
+However, the PCA method overshot the reference data set and the spiked Wishart and corpcor methods only slightly improved upon the independent simulation.
+
+Lastly, we compared the variances of principal components on each data set (@fig-compare-to-real e).
+These were computed separately for each data set, unlike (@fig-compare-to-real c) which used the reference data set's PCA weights for all data sets.
+The independent data has much lower variance than the real data set in the top four principal components.
+The spiked Wishart method comes closest to the real data set, as it optimizes for fitting these values.
+Surprisingly, the corpcor method performs only somewhat better than the independent method.
+The PCA method puts a large amount of variance into the first two components (due to using $k=2$) and then undershoots the other components.
 
 ```{r}
 #| label: fig-compare-to-real
@@ -91,11 +96,22 @@ compare_to_real_plot
 
 ### DESeq2 Application
 
-We benchmark DESeq2 [@Love2014], a popular differential expression analysis tool, using data sets simulated with dependence and ones simulated without dependence to compare its performances on both. We use a fly whole body RNA-Seq data set GSE81142 and select samples of male flies without treatment and after at least 2 hours of feeding to simulate 20 control samples with rank $k=2$ dependence structure, and 20 control samples assuming independence of the genes. We then randomly select 5% of the genes to be up or down regulated, with $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, and simulate 20 "experimental" samples each with and and without dependence.
+We benchmark DESeq2 [@Love2014], a popular differential expression analysis tool, using data sets simulated with dependence and ones simulated without dependence to compare its performances on both.
+DESeq2 presents an interesting case because several aspects of it assume independence of genes and so may be adversely affected by gene-gene dependence.
+First, the independent filtering step [@Bourgon2010-uv] assumes independence but has generally be regarded to be robust to typical gene-gene dependence.
+Relatedly, the false discovery rate (FDR) [@BH_FDR] allows only certain forms of dependence.
+Lastly, DESeq2's empirical Bayes steps could possibly be affected by gene dependence.
 
-Finally, we run DESeq2 on the two simulated experiments and compare the output false discovery rate (FDR) with the true percentages of genes that are differential expressed (@fig-DESeq2 a-b). We observe that DESeq2 is slightly anti-conservative on both data sets, with similar mean true FDRs for each estimated FDR cutoff. However, there is a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it potentially performs less reliably on data sets with gene-gene dependence, as in real data sets. We speculate that this is due to DESeq2's assumption that the gene expressions are independent.
+We use a fly whole body RNA-Seq data set GSE81142 and select samples of male flies without treatment and after at least 2 hours of feeding to simulate 20 control samples with rank $k=2$ dependence structure, and 20 control samples assuming independence of the genes.
+We then randomly select 5% of the genes to be up or down regulated, with $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, and simulate 20 "experimental" samples each with and and without dependence.
 
-To demonstrate the application of our simulation method for another organism, we also simulate data sets using a mouse cortex data set GSE151923 and select samples from male mice to infer the dependence structure of the quantified genes. We then simulate differential expression experiments with and without dependence as above, with 20 samples for each condition. We observe a similar result (@fig-DESeq2 c-d) as for the fly whole body data sets.
+Finally, we run DESeq2 on the two simulated experiments and compare the output false discovery rate (FDR) with the true percentages of genes that are differential expressed (@fig-DESeq2 a-b).
+We observe that DESeq2 is slightly anti-conservative on both data sets, with similar mean true FDRs for each estimated FDR cutoff.
+However, there is a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it potentially performs less reliably on data sets with gene-gene dependence, as in real data sets.
+
+To demonstrate the application of our simulation method for another organism, we also simulate data sets using a mouse cortex data set GSE151923 [@Wang2022] and select samples from male mice to infer the dependence structure of the quantified genes.
+We then simulate differential expression experiments with and without dependence as above, with 20 samples for each condition.
+We observe a similar result (@fig-DESeq2 c-d) as for the fly whole body data sets.
 
 ```{r}
 #| include: false
@@ -104,7 +120,7 @@ source("DE_plots.R")
 
 ```{r}
 #| label: fig-DESeq2
-#| fig-cap: "Performance of DESeq2 on simulated datasets. (a-b) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence and (b) with dependence. (c-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923, Wang et al. 2022), (c) without dependence and (d) with dependence."
+#| fig-cap: "Performance of DESeq2 on simulated datasets.(a-b) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence and (b) with dependence.  Diagonal line represents perfect estimation of FDR. (c-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923, Wang et al. 2022), (c) without dependence and (d) with dependence."
 #| fig-width: 7
 #| fig-height: 6
 DESeq2_fdr_plot
@@ -115,7 +131,7 @@ DESeq2_fdr_plot
 We further use our simulation method to benchmark CYCLOPS [@Anafi2017], which infer relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse liver time series data set (GSE151565, Aaronson et al. 2020), which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point. We then use these to simulate 20 time series data sets with rank $2$ dependence structure, each with 8 time points and 6 samples per time point, and 20 such data sets without dependence.
 
 We run CYCLOPS on each data set with a list of cyclic mouse liver genes (JTK p-value $<0.05$), which yields an estimated relative time for each sample. For the evaluation metric for CYCLOPS' performance, we use the circular correlation, defined as follows:
-$$\rho = \frac{\sum_{1\leq i<j\leq n}sin(X_i-X_j)sin(Y_i-Y_j)}{(\sum_{1\leq i<j\leq n}sin(X_i-X_j)^2)^{1/2}(\sum_{1\leq i<j\leq n}sin(Y_i-Y_j)^2)^{1/2}},$$
+$$\rho = \frac{\sum_{1\leq i<j\leq n}\sin(X_i-X_j) \sin(Y_i-Y_j)}{(\sum_{1\leq i<j\leq n} \sin(X_i-X_j)^2)^{1/2}(\sum_{1\leq i<j\leq n} \sin(Y_i-Y_j)^2)^{1/2}},$$
 where $n$ is the number of samples, $X_i$ and $Y_i$ are the true time and CYCLOPS-estimated time respectively for the $i$-th sample. $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates accurate predictions by CYCLOPS.
 
 We find that CYCLOPS performs better overall on simulated time series data sets with dependence than on those without dependence (@fig-CYCLOPS), indicating that the presence of gene-gene dependence is essential for CYCLOPS' performance.
@@ -127,7 +143,7 @@ source("circular_correlation.R")
 
 ```{r}
 #| label: fig-CYCLOPS
-#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565, Aaronson et al. 2020). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with and without dependence. (b-c) Examples of CYCLOPS estimated phases on a simulated data set (b) without dependence and (c) with dependence."
+#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565, Aaronson et al. 2020). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with and without dependence. (b-c) Examples of CYCLOPS estimated phases on a simulated data set (b) without dependence and (c) with dependence. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
 cyclops_plot
 ```
 

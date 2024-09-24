@@ -74,7 +74,7 @@ phaselist$true_counts_counts_counts_time <- as.numeric(phaselist$ID)
 phaselist$sin_estimated_phase <- sin(phaselist$phase)
 phaselist$cos_estimated_phase <- cos(phaselist$phase)
 phaseplot_0 <- ggplot(phaselist,aes(cos_estimated_phase,sin_estimated_phase))+
-    scale_color_gradientn(colors = rainbow(8), limits=c(0, 24)) +
+    scale_color_gradientn(colors = rainbow(8), limits=c(0, 24), name="true time") +
     geom_point(aes(colour=true_counts_counts_counts_time)) +
     xlim(-1, 1) +
     ylim(-1, 1) +
@@ -95,7 +95,7 @@ phaselist$true_counts_counts_counts_time <- as.numeric(phaselist$ID)
 phaselist$sin_estimated_phase <- sin(phaselist$phase)
 phaselist$cos_estimated_phase <- cos(phaselist$phase)
 phaseplot_2 <- ggplot(phaselist,aes(cos_estimated_phase,sin_estimated_phase))+
-    scale_color_gradientn(colors = rainbow(8), limits=c(0, 24)) +
+    scale_color_gradientn(colors = rainbow(8), limits=c(0, 24), name="true time") +
     geom_point(aes(colour=true_counts_counts_counts_time)) +
     xlim(-1, 1) +
     ylim(-1, 1) +
@@ -104,4 +104,4 @@ phaseplot_2
 #ggsave(paste0("plots/k=2_batch=", j, "_scatter.png"),
 #       scale = 1, width = 5, height = 4, units = "in")
 
-cyclops_plot <- circular_correlation_violin / (phaseplot_0 | phaseplot_2) + plot_annotation(tag_levels="a")
+cyclops_plot <- circular_correlation_violin / (phaseplot_0 | phaseplot_2) + plot_annotation(tag_levels="a") + plot_layout(guides = 'collect')
