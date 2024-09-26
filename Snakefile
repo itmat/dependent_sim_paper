@@ -33,7 +33,7 @@ rule all:
         expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
           k=[0,2], batch=range(0,20)),
         "processed/DE/Mouse.Cortex.Male.k=0.fdr.csv",
-        "manuscript/html",
+        #"manuscript/html",
 
 rule generate_sif:
     input:
@@ -70,8 +70,7 @@ rule simulate_mouse:
         "data/GSE151923_metaReadCount_ensembl.txt.gz",
         sif = "images/dependent_sim.sif",
     output:
-        expand("simulated_data/Mouse.Cortex.Male.k={k}.{group}{suffix}",
-            k = [0,2],
+        expand("simulated_data/Mouse.Cortex.Male.{{method}}.{group}{suffix}",
             group = ["Case", "Control"],
             suffix = [".txt", ".true_values.txt"])
     resources:
@@ -87,8 +86,7 @@ rule simulate_fly:
         "processed/GSE81142_sample_metadata.txt",
         sif = "images/dependent_sim.sif",
     output:
-        expand("simulated_data/Fly.WholeBody.Male.k={k}.{group}{suffix}",
-            k = [0,2],
+        expand("simulated_data/Fly.WholeBody.Male.{{method}}.{group}{suffix}",
             group = ["Case", "Control"],
             suffix = [".txt", ".true_values.txt"])
     resources:
@@ -100,18 +98,18 @@ rule simulate_fly:
         
 rule sim_de:
     input:
-        expand("simulated_data/Mouse.Cortex.Male.k={k}.{group}{suffix}",
-            k = [0,2],
+        expand("simulated_data/Mouse.Cortex.Male.{method}.{group}{suffix}",
+            method = ["indep", "pca", "wishart", "corpcor"],
             group = ["Case", "Control"],
             suffix = [".txt", ".true_values.txt"]),
-        expand("simulated_data/Fly.WholeBody.Male.k={k}.{group}{suffix}",
-            k = [0,2],
+        expand("simulated_data/Fly.WholeBody.Male.{method}.{group}{suffix}",
+            method = ["indep", "pca", "wishart", "corpcor"],
             group = ["Case", "Control"],
             suffix = [".txt", ".true_values.txt"]),
         sif = "images/dependent_sim.sif",
     output:
-        expand("processed/DE/{tissue}.Male.k={k}.fdr.csv",
-            k = [0,2],
+        expand("processed/DE/{tissue}.Male.{method}.fdr.csv",
+            method = ["indep", "pca", "wishart", "corpcor"],
             tissue = ["Mouse.Cortex", "Fly.WholeBody"]),
     resources:
         mem_mb = 6_000
@@ -139,10 +137,9 @@ rule simulate_time_series:
         "processed/mean_per_time_Liver.csv",
         "images/dependent_sim.sif",
     output:
-        "simulated_data/Liver_120_simulated_time_series_k=2.csv",
-        "simulated_data/Liver_120_normalized_simulated_time_series_k=2.csv",
-        "simulated_data/Liver_120_simulated_time_series_k=0.csv",
-        "simulated_data/Liver_120_normalized_simulated_time_series_k=0.csv",
+        expand("simulated_data/Liver_120_{datatype}_time_series_{method}.csv",
+            datatype = ["simulated", "normalized_simulated"],
+            method = ["indep", "pca", "wishart", "corpcor"])
     resources:
         mem_mb = 6_000
     container:
@@ -160,9 +157,9 @@ rule make_cyclic_gene_list:
 
 rule make_cyclops_input:
     input:
-        expression = "simulated_data/Liver_120_normalized_simulated_time_series_k={k}.csv"
+        expression = "simulated_data/Liver_120_normalized_simulated_time_series_{method}.csv"
     output:
-        expression = "processed/cyclops_input/batch={batch}.k={k}.csv"
+        expression = "processed/cyclops_input/batch={batch}.{method}.csv"
     params:
         batch_size = 6
     script:
@@ -170,13 +167,13 @@ rule make_cyclops_input:
 
 rule run_cyclops:
     input:
-        expression = "processed/cyclops_input/batch={batch}.k={k}.csv",
+        expression = "processed/cyclops_input/batch={batch}.{method}.csv",
         seedfile = "processed/cyclic_gene_list.txt",
         sif = "images/cyclops.sif",
     output:
-        output = "processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
+        output = "processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv",
     params:
-        outdir = "processed/cyclops/k={k}/batch={batch}/",
+        outdir = "processed/cyclops/{method}/batch={batch}/",
     container:
         "file://images/cyclops.sif",
     shell:
@@ -201,9 +198,13 @@ rule run_cyclops_real_data:
 rule generate_manuscript:
     input:
         "manuscript/compare_to_real.R",
-        "processed/DE/Mouse.Cortex.Male.k=0.fdr.csv",
+        expand("processed/DE/{tissue}.Male.{method}.fdr.csv",
+            method = ["indep", "pca", "wishart", "corpcor"],
+            tissue = ["Mouse.Cortex", "Fly.WholeBody"]),
         "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
-        expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv", k=[0,2], batch=range(0,20)),
+        expand("processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv", 
+            method = ["indep", "pca", "wishart", "corpcor"], 
+            batch=range(0,20)),
         index = "manuscript/paper.qmd",
         sif = "images/quarto.sif",
     output:

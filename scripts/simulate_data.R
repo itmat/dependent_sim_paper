@@ -4,6 +4,8 @@ library(tibble)
 library(DESeq2)
 library(rlang)
 
+method <- snakemake@output$wildcards.method
+
 metadata <- read.delim("processed/GSE151923_sample_metadata.txt", sep="\t")
 read_counts <- read.delim("data/GSE151923_metaReadCount_ensembl.txt.gz", sep="\t")
 
@@ -35,7 +37,21 @@ female_read_counts <- read_counts[,sex == 'female']
 ###lfc <- results(dds, c("sex", "female", "male"))$log2FoldChange
 
 # Produce simulated data
-male_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, types="DESeq2")
+if (method == "pca") {
+    # Simulate with the PCA method
+    rs <- get_random_structure(list(counts=read_counts), method="pca", rank=2, type="DESeq2")
+} else if (method == "corpcor") {
+    # Simulate with the corpcor method
+    rs <- get_random_structure(list(counts=read_counts), method="corpcor", type="DESeq2")
+} else if (method == "wishart") {
+    # Simulate with the spiked Wishart method
+    rs <- get_random_structure(list(counts=read_counts), rank=11, method="spiked Wishart", type="DESeq2")
+} else if (method == "indep") {
+    # Simulate without any dependence
+    rs <- get_random_structure(list(counts=read_counts), method="pca", rank=2, type="DESeq2")
+    rs <- remove_dependence(rs)
+}
+
 
 actual_library_sizes <- male_read_counts |> apply(2, sum)
 
@@ -67,11 +83,7 @@ generate <- function(rs, seed, name) {
 
 ## Generate Controls
 # With dependence
-male_sim <- generate(male_rs, seed=1, name="Mouse.Cortex.Male.k=2.Control")
-
-# Without dependence (k=0)
-male_indep_rs <- remove_dependence(male_rs)
-male_indep_sim <- generate(male_indep_rs, seed=2, name="Mouse.Cortex.Male.k=0.Control")
+male_sim <- generate(rs, seed=1, name=paste0("Mouse.Cortex.Male.",method,".Control"))
 
 # Randomly select some genes to be DE
 set.seed(0)
