@@ -4,7 +4,7 @@ library(tibble)
 library(DESeq2)
 library(rlang)
 
-method <- snakemake@output$wildcards.method
+method <- snakemake@wildcards$method
 
 metadata <- read.delim("processed/GSE151923_sample_metadata.txt", sep="\t")
 read_counts <- read.delim("data/GSE151923_metaReadCount_ensembl.txt.gz", sep="\t")
@@ -38,29 +38,31 @@ female_read_counts <- read_counts[,sex == 'female']
 
 # Produce simulated data
 if (method == "pca") {
+    set.seed(1)
     # Simulate with the PCA method
-    rs <- get_random_structure(list(counts=read_counts), method="pca", rank=2, type="DESeq2")
+    rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, types="DESeq2")
 } else if (method == "corpcor") {
+    set.seed(2)
     # Simulate with the corpcor method
-    rs <- get_random_structure(list(counts=read_counts), method="corpcor", type="DESeq2")
+    rs <- get_random_structure(list(data=male_read_counts), method="corpcor", types="DESeq2")
 } else if (method == "wishart") {
+    set.seed(3)
     # Simulate with the spiked Wishart method
-    rs <- get_random_structure(list(counts=read_counts), rank=11, method="spiked Wishart", type="DESeq2")
+    rs <- get_random_structure(list(data=male_read_counts), rank=11, method="spiked Wishart", types="DESeq2")
 } else if (method == "indep") {
+    set.seed(4)
     # Simulate without any dependence
-    rs <- get_random_structure(list(counts=read_counts), method="pca", rank=2, type="DESeq2")
-    rs <- remove_dependence(rs)
+    dep_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, type="DESeq2")
+    rs <- remove_dependence(dep_rs)
 }
 
 
 actual_library_sizes <- male_read_counts |> apply(2, sum)
 
 N_SAMPLES <- 100
-set.seed(0)
 library_sizes <- sample(actual_library_sizes / mean(actual_library_sizes), size=N_SAMPLES, replace=TRUE)
-generate <- function(rs, seed, name) {
+generate <- function(rs, name) {
   # Generate and save data+metadata (true values) from a specific random structure
-  set.seed(seed)
   sim <- draw_from_multivariate_corr(rs, n_samples=N_SAMPLES, size_factors=library_sizes)$data
   colnames(sim) <- paste("sample", 1:ncol(sim), sep='')
 
@@ -83,23 +85,26 @@ generate <- function(rs, seed, name) {
 
 ## Generate Controls
 # With dependence
-male_sim <- generate(rs, seed=1, name=paste0("Mouse.Cortex.Male.",method,".Control"))
+male_sim <- generate(rs, name=paste0("Mouse.Cortex.Male.",method,".Control"))
 
 # Randomly select some genes to be DE
-set.seed(0)
 FRAC_DE <- 0.05
 LFC_MIN <- 0.2
 LFC_MAX <- 2.0
 N_DE <- floor(FRAC_DE * nrow(male_sim))
 de_genes <- sample(nrow(male_sim), N_DE)
 de_lfc <- runif(N_DE, LFC_MIN, LFC_MAX) * sample(c(-1, 1), size=N_DE, replace=TRUE)
-male_de_rs <- male_rs
-male_de_rs$marginals$data$q[de_genes] <- 2^(de_lfc) * male_de_rs$marginals$data$q[de_genes]
 
 ## Generate Cases
-male_de_sim <- generate(male_de_rs, seed=3, name="Mouse.Cortex.Male.k=2.Case")
-
-male_indep_de_rs <- remove_dependence(male_de_rs)
-male_indep_de_sim <- generate(male_indep_de_rs, seed=4, name="Mouse.Cortex.Male.k=0.Case")
-
-# test
+if (method == "indep") {
+    male_de_rs <- dep_rs
+    male_de_rs$marginals$data$q[de_genes] <- 2^(de_lfc) * male_de_rs$marginals$data$q[de_genes]
+    
+    male_indep_de_rs <- remove_dependence(male_de_rs)
+    male_indep_de_sim <- generate(male_indep_de_rs, name="Mouse.Cortex.Male.indep.Case")
+} else {
+    male_de_rs <- rs
+    male_de_rs$marginals$data$q[de_genes] <- 2^(de_lfc) * male_de_rs$marginals$data$q[de_genes]
+    
+    male_de_sim <- generate(male_de_rs, name=paste0("Mouse.Cortex.Male.",method,".Case"))
+}

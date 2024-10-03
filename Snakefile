@@ -25,14 +25,14 @@ soft_metadata_attributes = {
 
 rule all:
     input:
-        "simulated_data/Mouse.Cortex.Male.k=2.Control.txt",
-        "simulated_data/Fly.WholeBody.Male.k=2.Control.txt",
-        "simulated_data/Liver_120_simulated_time_series_k=2.csv",
+        "simulated_data/Mouse.Cortex.Male.pca.Control.txt",
+        "simulated_data/Fly.WholeBody.Male.pca.Control.txt",
+        "simulated_data/Liver_120_simulated_time_series_pca.csv",
         #"time_series_data/Mouse.Cortex.k=2.txt",
         "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
-        expand("processed/cyclops/k={k}/batch={batch}/cyclops_estimated_phaselist.csv",
-          k=[0,2], batch=range(0,20)),
-        "processed/DE/Mouse.Cortex.Male.k=0.fdr.csv",
+        expand("processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv",
+          method = ["indep", "pca", "wishart", "corpcor"], batch=range(0,20)),
+        "processed/DE/Mouse.Cortex.Male.pca.fdr.csv",
         #"manuscript/html",
 
 rule generate_sif:
@@ -137,9 +137,8 @@ rule simulate_time_series:
         "processed/mean_per_time_Liver.csv",
         "images/dependent_sim.sif",
     output:
-        expand("simulated_data/Liver_120_{datatype}_time_series_{method}.csv",
-            datatype = ["simulated", "normalized_simulated"],
-            method = ["indep", "pca", "wishart", "corpcor"])
+        expand("simulated_data/Liver_120_{datatype}_time_series_{{method}}.csv",
+            datatype = ["simulated", "normalized_simulated"])
     resources:
         mem_mb = 6_000
     container:
@@ -174,6 +173,8 @@ rule run_cyclops:
         output = "processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv",
     params:
         outdir = "processed/cyclops/{method}/batch={batch}/",
+    resources:
+        mem_mb = 4000
     container:
         "file://images/cyclops.sif",
     shell:

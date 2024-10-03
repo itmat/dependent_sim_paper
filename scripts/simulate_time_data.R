@@ -5,21 +5,39 @@ library(DESeq2)
 library(tidyverse)
 library(rlang)
 
+method <- snakemake@wildcards$method
+
 # use ZT0 of raw time series data to get dependence structure
 male_read_counts <- read.csv("processed/Liver_ZT0-counts.csv") |> 
     column_to_rownames(var="raw_data.EnsemblID")
 
-# Produce simulated data
-male_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, types="DESeq2")
+# Get dependence structure
+if (method == "pca") {
+    set.seed(1)
+    # Simulate with the PCA method
+    male_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, types="DESeq2")
+} else if (method == "corpcor") {
+    set.seed(2)
+    # Simulate with the corpcor method
+    male_rs <- get_random_structure(list(data=male_read_counts), method="corpcor", types="DESeq2")
+} else if (method == "wishart") {
+    set.seed(3)
+    # Simulate with the spiked Wishart method
+    male_rs <- get_random_structure(list(data=male_read_counts), rank=11, method="spiked Wishart", types="DESeq2")
+} else if (method == "indep") {
+    set.seed(4)
+    # Simulate without any dependence
+    dep_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, type="DESeq2")
+    male_rs <- remove_dependence(dep_rs)
+}
 
 actual_library_sizes <- male_read_counts |> apply(2, sum)
 
 N_SAMPLES <- 120
-set.seed(0)
 
 generate <- function(rs, seed) {
-  # Generate and save data+metadata (true values) from a specific random structure
   set.seed(seed)
+    # Generate and save data+metadata (true values) from a specific random structure
   library_sizes <- sample(actual_library_sizes / mean(actual_library_sizes), size=N_SAMPLES, replace=TRUE)
   sim <- draw_from_multivariate_corr(rs, n_samples=N_SAMPLES, size_factors=library_sizes)$data
   colnames(sim) <- paste("sample", 1:ncol(sim), sep='')
@@ -33,11 +51,7 @@ generate <- function(rs, seed) {
 
 ## Generate Controls
 # With dependence
-male_sim <- generate(male_rs, seed=1)
-
-# Without dependence (k=0)
-male_indep_rs <- remove_dependence(male_rs)
-male_indep_sim <- generate(male_indep_rs, seed=2)
+male_sim <- generate(male_rs, .Random.seed)
 
 # read time point means
 time_point_means <- read.csv("processed/mean_per_time_Liver.csv") |> 
@@ -48,41 +62,31 @@ time_point_means$mean <- time_point_means[, -1] |>
 
 # adjust male_read_counts with time
 data_per_time <- list()
-indep_data_per_time <- list()
 for (i in (2 : (ncol(time_point_means)-1))) {
     time_rs <- male_rs
     factor <- time_point_means[, i]/time_point_means[, 'mean']
     time_rs$marginals$data$q <- factor * time_rs$marginals$data$q
     
-    # Generate with dependence
-    time_sim <- generate(time_rs, seed=2*i)
+    if (method == "indep") {
+        time_rs <- dep_rs
+        time_rs$marginals$data$q <- factor * time_rs$marginals$data$q
+        time_rs <- remove_dependence(time_rs)
+    }
+    
+    # Generate simulated data at time point
+    time_sim <- generate(time_rs, seed=.Random.seed+4*i)
     time <- colnames(time_point_means)[i]
     colnames(time_sim) <- c('ENSEMBL_ID', paste0(time, '_sample', 1:120))
-    
-    # Without dependence (k=0)
-    indep_time_rs <- remove_dependence(time_rs)
-    indep_time_sim <- generate(indep_time_rs, seed=2*i+1)
-    colnames(indep_time_sim) <- c('ENSEMBL_ID', paste0(time, '_sample', 1:120))
-    
     data_per_time[[i-1]] <- time_sim
-    indep_data_per_time[[i-1]] <- indep_time_sim
 }
 
 time_data <- data_per_time |> 
     purrr::reduce(full_join, by="ENSEMBL_ID")
-write.csv(time_data, "simulated_data/Liver_120_simulated_time_series_k=2.csv", row.names = FALSE)
+write.csv(time_data, paste0("simulated_data/Liver_120_simulated_time_series_",method,".csv"), row.names = FALSE)
 norm_time_data <- time_data
 read_depth <- apply(time_data[, -1], 2, sum)
-norm_time_data[, -1] <- as.tibble(as.matrix(time_data[, -1]) %*% diag(1000000/read_depth))
-write.csv(norm_time_data, "simulated_data/Liver_120_normalized_simulated_time_series_k=2.csv", row.names = FALSE)
-
-indep_time_data <- indep_data_per_time |> 
-    purrr::reduce(full_join, by="ENSEMBL_ID")
-write.csv(indep_time_data, "simulated_data/Liver_120_simulated_time_series_k=0.csv", row.names = FALSE)
-norm_indep_time_data <- indep_time_data
-read_depth <- apply(indep_time_data[, -1], 2, sum)
-norm_indep_time_data[, -1] <- as.tibble(as.matrix(indep_time_data[, -1]) %*% diag(1000000/read_depth))
-write.csv(norm_indep_time_data, "simulated_data/Liver_120_normalized_simulated_time_series_k=0.csv", row.names = FALSE)
+norm_time_data[, -1] <- as_tibble(as.matrix(time_data[, -1]) %*% diag(1000000/read_depth))
+write.csv(norm_time_data, paste0("simulated_data/Liver_120_normalized_simulated_time_series_",method,".csv"), row.names = FALSE)
 
 
 

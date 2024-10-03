@@ -132,68 +132,39 @@ simDE_analysis <- function(filename, samples) {
 }
 
 
-# run DE analysis on the mouse dataset for k=0 and get fdr values
-
-fdr_lists0 = list()
-for (s in (1:20)) {
-    fdr_list <- simDE_analysis("Mouse.Cortex.Male.k=0", ((5*s-3):(5*s+1)))
-    fdr_lists0[[s]] <- fdr_list
-}
-
-# plot mean and confidence interval
-fdr_df0 <- bind_rows(fdr_lists0, .id="data_frame") |> 
-    group_by(cutoff) |> 
-    summarise(mean = mean(fdr), lower = t.test(fdr)$conf.int[1], upper = t.test(fdr)$conf.int[2])
-
-write_csv(fdr_df0, "processed/DE/Mouse.Cortex.Male.k=0.fdr.csv")
-
-
-# plot fdr graphs for k=2
-fdr_lists2 = list()
-for (s in (1:20)) {
-    #print(((5*s-3):(5*s+1)))
-    fdr_list <- simDE_analysis("Mouse.Cortex.Male.k=2", ((5*s-3):(5*s+1)))
-    fdr_lists2[[s]] <- fdr_list
-}
-
-# plot mean and confidence interval
-fdr_df2 <- bind_rows(fdr_lists2, .id="data_frame") |> 
-    group_by(cutoff) |> 
-    summarise(mean = mean(fdr), lower = t.test(fdr)$conf.int[1], upper = t.test(fdr)$conf.int[2])
-
-write_csv(fdr_df2, "processed/DE/Mouse.Cortex.Male.k=2.fdr.csv")
-
-
-# run DE analysis on the fly dataset for k=0 and get fdr values
-
-fdr_lists0_fly = list()
-for (s in (1:20)) {
-    fdr_list <- simDE_analysis("Fly.WholeBody.Male.k=0", ((5*s-3):(5*s+1)))
-    fdr_lists0_fly[[s]] <- fdr_list
+# run DE analysis on the mouse data set for all four methods and get fdr values
+for (method in c("indep", "pca", "wishart", "corpcor")) {
+    fdr_lists = list()
+    for (s in (1:20)) {
+        fdr_list <- simDE_analysis(paste0("Mouse.Cortex.Male.",method), ((5*s-3):(5*s+1)))
+        fdr_lists[[s]] <- fdr_list
+    }
+    
+    # plot mean and confidence interval
+    fdr_df <- bind_rows(fdr_lists, .id="data_frame") |> 
+        group_by(cutoff) |> 
+        summarise(mean = mean(fdr), lower = t.test(fdr)$conf.int[1], upper = t.test(fdr)$conf.int[2])
+    
+    write_csv(fdr_df, paste0("processed/DE/Mouse.Cortex.Male.",method,".fdr.csv"))
 }
 
 
-# plot mean and confidence interval
-fdr_df0_fly <- bind_rows(fdr_lists0_fly, .id="data_frame") |> 
-    group_by(cutoff) |> 
-    summarise(mean = mean(fdr), lower = t.test(fdr)$conf.int[1], upper = t.test(fdr)$conf.int[2])
-
-write_csv(fdr_df0_fly, "processed/DE/Fly.WholeBody.Male.k=0.fdr.csv")
-
-
-# plot fdr graphs for k=2
-fdr_lists2_fly = list()
-for (s in (1:20)) {
-    fdr_list <- simDE_analysis("Fly.WholeBody.Male.k=2", ((5*s-3):(5*s+1)))
-    fdr_lists2_fly[[s]] <- fdr_list
+# run DE analysis on the fly data set for all four methods and get fdr values
+for (method in c("indep", "pca", "wishart", "corpcor")) {
+    fdr_lists_fly = list()
+    for (s in (1:20)) {
+        fdr_list <- simDE_analysis(paste0("Fly.WholeBody.Male.",method), ((5*s-3):(5*s+1)))
+        fdr_lists_fly[[s]] <- fdr_list
+    }
+    
+    
+    # plot mean and confidence interval
+    fdr_df_fly <- bind_rows(fdr_lists_fly, .id="data_frame") |> 
+        group_by(cutoff) |> 
+        summarise(mean = mean(fdr), lower = t.test(fdr)$conf.int[1], upper = t.test(fdr)$conf.int[2])
+    
+    write_csv(fdr_df_fly, paste0("processed/DE/Fly.WholeBody.Male.",method,".fdr.csv"))
 }
-
-# plot mean and confidence interval
-fdr_df2_fly <- bind_rows(fdr_lists2_fly, .id="data_frame") |> 
-    group_by(cutoff) |> 
-    summarise(mean = mean(fdr), lower = t.test(fdr)$conf.int[1], upper = t.test(fdr)$conf.int[2])
-
-write_csv(fdr_df2_fly, "processed/DE/Fly.WholeBody.Male.k=2.fdr.csv")
 
 
 # make_qqplot <- function(filename, k) {
