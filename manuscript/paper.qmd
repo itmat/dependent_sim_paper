@@ -102,16 +102,16 @@ First, the independent filtering step [@Bourgon2010-uv] assumes independence but
 Relatedly, the false discovery rate (FDR) [@BH_FDR] allows only certain forms of dependence.
 Lastly, DESeq2's empirical Bayes steps could possibly be affected by gene dependence.
 
-We use a fly whole body RNA-Seq data set GSE81142 and select samples of male flies without treatment and after at least 2 hours of feeding to simulate 20 control samples with rank $k=2$ dependence structure, and 20 control samples assuming independence of the genes.
-We then randomly select 5% of the genes to be up or down regulated, with $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, and simulate 20 "experimental" samples each with and and without dependence.
+We use a fly whole body RNA-Seq data set GSE81142 and select samples of male flies without treatment and after at least 2 hours of feeding to simulate 20 control samples with each of the three simulation methods with dependence structure-PCA, Wishart and corpcor, as well as assuming independence of the genes.
+We then randomly select 5% of the genes to be up or down regulated, with $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, and simulate 20 "experimental" samples with each of the four methods.
 
-Finally, we run DESeq2 on the two simulated experiments and compare the output false discovery rate (FDR) with the true percentages of genes that are differential expressed (@fig-DESeq2 a-b).
+Finally, we run DESeq2 on the four simulated experiments and compare the output false discovery rate (FDR) with the true percentages of genes that are differential expressed (@fig-DESeq2 a-d).
 We observe that DESeq2 is slightly anti-conservative on both data sets, with similar mean true FDRs for each estimated FDR cutoff.
 However, there is a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it potentially performs less reliably on data sets with gene-gene dependence, as in real data sets.
 
 To demonstrate the application of our simulation method for another organism, we also simulate data sets using a mouse cortex data set GSE151923 [@Wang2022] and select samples from male mice to infer the dependence structure of the quantified genes.
-We then simulate differential expression experiments with and without dependence as above, with 20 samples for each condition.
-We observe a similar result (@fig-DESeq2 c-d) as for the fly whole body data sets.
+We then simulate differential expression experiments with the four simulation methods as above, with 20 samples for each condition.
+We observe a similar result (@fig-DESeq2 e-h) as for the fly whole body data sets.
 
 ```{r}
 #| include: false
@@ -120,8 +120,8 @@ source("DE_plots.R")
 
 ```{r}
 #| label: fig-DESeq2
-#| fig-cap: "Performance of DESeq2 on simulated datasets.(a-b) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence and (b) with dependence.  Diagonal line represents perfect estimation of FDR. (c-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923, Wang et al. 2022), (c) without dependence and (d) with dependence."
-#| fig-width: 7
+#| fig-cap: "Performance of DESeq2 on simulated datasets.(a-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence, (b) using PCA, (c) using Wishart and (d) using corpcor.  Diagonal line represents perfect estimation of FDR. (e-h) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923, Wang et al. 2022), (e) without dependence, (f) using PCA, (g) using Wishart and (h) using corpcor."
+#| fig-width: 12
 #| fig-height: 6
 DESeq2_fdr_plot
 ```
@@ -134,7 +134,7 @@ We run CYCLOPS on each data set with a list of cyclic mouse liver genes (JTK p-v
 $$\rho = \frac{\sum_{1\leq i<j\leq n}\sin(X_i-X_j) \sin(Y_i-Y_j)}{(\sum_{1\leq i<j\leq n} \sin(X_i-X_j)^2)^{1/2}(\sum_{1\leq i<j\leq n} \sin(Y_i-Y_j)^2)^{1/2}},$$
 where $n$ is the number of samples, $X_i$ and $Y_i$ are the true time and CYCLOPS-estimated time respectively for the $i$-th sample. $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates accurate predictions by CYCLOPS.
 
-We find that CYCLOPS performs better overall on simulated time series data sets with dependence than on those without dependence (@fig-CYCLOPS), indicating that the presence of gene-gene dependence is essential for CYCLOPS' performance.
+We find that CYCLOPS performs better overall on time series data sets simulated with PCA and corpcor than on those without dependence and with Wishart (@fig-CYCLOPS), indicating that the presence of gene-gene dependence, as well as the method used to simulate dependence is essential for CYCLOPS' performance. This is likely due to the number of eigengenes needed by CYCLOPS to meet the variance threshold (@fig_CYCLOPS b).
 
 ```{r}
 #| include: false
@@ -143,7 +143,9 @@ source("circular_correlation.R")
 
 ```{r}
 #| label: fig-CYCLOPS
-#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565, Aaronson et al. 2020). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with and without dependence. (b-c) Examples of CYCLOPS estimated phases on a simulated data set (b) without dependence and (c) with dependence. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565, Aaronson et al. 2020). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with the four methods. (b) Violin plot comparing the number of eigengenes used by CYCLOPS between the four methods; the red dotted line indicates the number of eigengenes used by CYCLOPS on the real data (13). (c-f) Examples of CYCLOPS estimated phases on a simulated data set (b) without dependence, (c) with PCA, (d) with Wishart and (d) with corpcor. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-width: 12
+#| fig-height: 8
 cyclops_plot
 ```
 

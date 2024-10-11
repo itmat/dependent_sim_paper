@@ -74,7 +74,19 @@ for (method in c("indep", "pca", "wishart", "corpcor")) {
         ggtitle(method)
 }
 
+# plot the number of eigengenes used by CYCLOPS
+eigen <- read.delim("num_eigengene.txt", header = FALSE, sep=" ") |> 
+    select(V5, V6) |> 
+    rename(num = V5, method = V6) |> 
+    mutate(method = sapply(strsplit(method,"/|\\\\"), '[', 4))
+eigen <- eigen[1:80,]
+eigen_violin <- ggplot(eigen, aes(method, num)) +
+    geom_violin() +
+    ylab("number of eigengenes") +
+    geom_hline(yintercept = 13, linetype = "dashed", color = "red")
+
 cyclops_plot <- circular_correlation_violin / 
+    eigen_violin /
     (phaseplots$indep | phaseplots$pca | phaseplots$wishart | phaseplots$corpcor) + 
     plot_annotation(tag_levels="a")# + plot_layout(guides = 'collect')
 cyclops_plot
