@@ -20,7 +20,7 @@ TYPE_COLORS <- RColorBrewer::brewer.pal(length(TYPE_ORDER), "Set2")
 raw <- read_tsv("../data/GSE151923_metaReadCount_ensembl.txt.gz") |>
   select(-GeneName, -Description, -Chromosome, -Strand)
 read_counts <- as.matrix(raw[,2:13])
-rownames(read_counts) <- raw$GeneID
+rownames(read_counts) <- raw[[1]]
 
 actual_library_sizes <- apply(read_counts, 2, sum)
 
