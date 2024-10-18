@@ -33,7 +33,7 @@ rule all:
         expand("processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv",
           method = ["indep", "pca", "wishart", "corpcor"], batch=range(0,20)),
         "processed/DE/Mouse.Cortex.Male.pca.fdr.csv",
-        #"manuscript/html",
+        "manuscript/html",
 
 rule generate_sif:
     input:

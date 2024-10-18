@@ -3,6 +3,7 @@ library(tibble)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(stringr)
 library(patchwork)
 
 # formula for the circular correlation
@@ -75,12 +76,11 @@ for (method in c("indep", "pca", "wishart", "corpcor")) {
 }
 
 # plot the number of eigengenes used by CYCLOPS
-eigen <- read.delim("num_eigengene.txt", header = FALSE, sep=" ") |> 
-    select(V5, V6) |> 
-    rename(num = V5, method = V6) |> 
-    mutate(method = sapply(strsplit(method,"/|\\\\"), '[', 4))
-eigen <- eigen[1:80,]
-eigen_violin <- ggplot(eigen, aes(method, num)) +
+eigen <- read_delim("num_eigengene.txt", col_names=c("num", "file")) |> 
+    mutate(method = str_extract(file, "./processed/cyclops/([a-z]+)", group=1))
+sim_eigen <- eigen |> filter(method != "real")
+real_eigens <- (eigen |> filter(method == "real"))$num
+eigen_violin <- ggplot(sim_eigen, aes(method, num)) +
     geom_violin() +
     ylab("number of eigengenes") +
     geom_hline(yintercept = 13, linetype = "dashed", color = "red")
