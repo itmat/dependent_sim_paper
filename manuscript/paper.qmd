@@ -134,8 +134,8 @@ source("DE_plots.R")
 
 ```{r}
 #| label: fig-DESeq2
-#| fig-cap: "Performance of DESeq2 on simulated datasets.(a-b) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence and (b) with dependence.  Diagonal line represents perfect estimation of FDR. (c-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923, Wang et al. 2022), (c) without dependence and (d) with dependence."
-#| fig-width: 7
+#| fig-cap: "Performance of DESeq2 on simulated datasets.(a-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence, (b) using PCA, (c) using Wishart and (d) using corpcor.  Diagonal line represents perfect estimation of FDR. (e-h) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923, Wang et al. 2022), (e) without dependence, (f) using PCA, (g) using Wishart and (h) using corpcor."
+#| fig-width: 12
 #| fig-height: 6
 DESeq2_fdr_plot
 ```
@@ -152,7 +152,7 @@ $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates acc
 
 We find that CYCLOPS performance depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS), indicating that the presence of gene-gene dependence is highly impactful on CYCLOPS' performance.
 Overall, CYCLOPS performance is poor in the independent data and improved in both PCA and corpcor data, but surprisingly the Wishart data also shows poor performance.
-Since by default CYCLOPS performs dimension reduction to the number of dimensions needed to capture 99% of the variance, we hypothesize that data with dependence allows fewer dimensions to be used which improved the performance.
+Since by default CYCLOPS performs dimension reduction to the number of dimensions needed to capture 99% of the variance, this performance difference is likely due to the number of eigengenes needed by CYCLOPS to meet the variance threshold (@fig_CYCLOPS b).
 
 ```{r}
 #| include: false
@@ -161,7 +161,9 @@ source("circular_correlation.R")
 
 ```{r}
 #| label: fig-CYCLOPS
-#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565, Aaronson et al. 2020). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets under the four dependence methods. (b-e) Examples of CYCLOPS estimated phases. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with the four methods. (b) Violin plot comparing the number of eigengenes used by CYCLOPS between the four methods; the red dotted line indicates the number of eigengenes used by CYCLOPS on the real data (13). (c-f) Examples of CYCLOPS estimated phases on the simulated data sets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-width: 12
+#| fig-height: 8
 cyclops_plot
 ```
 
