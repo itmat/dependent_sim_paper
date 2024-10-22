@@ -6,13 +6,16 @@ library(dplyr)
 library(tidyr)
 library(patchwork)
 
+TYPE_ORDER <- c("indep", "pca", "wishart", "corpcor")
+TYPE_COLORS <- RColorBrewer::brewer.pal(4, "Dark2")
 mouse_plots = list()
-for (method in c("indep", "pca", "wishart", "corpcor")) {
+for (i in 1:4) {
+    method <- TYPE_ORDER[i]
     fdr_df <- read_csv(paste0("../processed/DE/Mouse.Cortex.Male.",method,".fdr.csv"))
     
     mouse_plots[[method]] <- ggplot(fdr_df, aes(cutoff, mean, ymin=lower, ymax=upper)) +
-        geom_ribbon(fill="grey") +
-        geom_point() +
+        geom_ribbon(fill=TYPE_COLORS[i], alpha=0.3) +
+        geom_point(color=TYPE_COLORS[i]) +
         geom_abline(slope=1, intercept = 0) +
         ggtitle(method) +
         xlab("reported FDR") +
@@ -32,12 +35,13 @@ for (method in c("indep", "pca", "wishart", "corpcor")) {
 #     geom_abline(slope=1, intercept = 0)
 
 fly_plots = list()
-for (method in c("indep", "pca", "wishart", "corpcor")) {
+for (i in 1:4) {
+    method <- TYPE_ORDER[i]
     fdr_df_fly <- read_csv(paste0("../processed/DE/Fly.WholeBody.Male.",method,".fdr.csv"))
     
     fly_plots[[method]] <- ggplot(fdr_df_fly, aes(cutoff, mean, ymin=lower, ymax=upper)) +
-        geom_ribbon(fill="grey") +
-        geom_point() +
+        geom_ribbon(fill=TYPE_COLORS[i], alpha=0.3) +
+        geom_point(color=TYPE_COLORS[i]) +
         geom_abline(slope=1, intercept = 0) +
         ggtitle(method) +
         xlab("reported FDR") +

@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.424">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jianing Yang">
+<meta name="author" content="Gregory R. Grant">
+<meta name="author" content="Thomas G. Brooks">
+
+<title>Generating Correlated Data for Omics Simulation</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="paper_files/libs/clipboard/clipboard.min.js"></script>
+<script src="paper_files/libs/quarto-html/quarto.js"></script>
+<script src="paper_files/libs/quarto-html/popper.min.js"></script>
+<script src="paper_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="paper_files/libs/quarto-html/anchor.min.js"></script>
+<link href="paper_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="paper_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="paper_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="paper_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="paper_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="99">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#abstract" id="toc-abstract" class="nav-link active" data-scroll-target="#abstract">Abstract</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a>
+  <ul class="collapse">
+  <li><a href="#comparison-to-real-data" id="toc-comparison-to-real-data" class="nav-link" data-scroll-target="#comparison-to-real-data">Comparison to Real Data</a></li>
+  <li><a href="#deseq2-application" id="toc-deseq2-application" class="nav-link" data-scroll-target="#deseq2-application">DESeq2 Application</a></li>
+  <li><a href="#cyclops-application" id="toc-cyclops-application" class="nav-link" data-scroll-target="#cyclops-application">CYCLOPS Application</a></li>
+  </ul></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods">Methods</a>
+  <ul class="collapse">
+  <li><a href="#gaussian-copula" id="toc-gaussian-copula" class="nav-link" data-scroll-target="#gaussian-copula">Gaussian Copula</a></li>
+  <li><a href="#pca-method" id="toc-pca-method" class="nav-link" data-scroll-target="#pca-method">PCA Method</a></li>
+  <li><a href="#spiked-wishart-method" id="toc-spiked-wishart-method" class="nav-link" data-scroll-target="#spiked-wishart-method">Spiked Wishart Method</a></li>
+  <li><a href="#corpcor-method" id="toc-corpcor-method" class="nav-link" data-scroll-target="#corpcor-method">Corpcor Method</a></li>
+  </ul></li>
+  <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion">Discussion</a>
+  <ul class="collapse">
+  <li><a href="#alternatives" id="toc-alternatives" class="nav-link" data-scroll-target="#alternatives">Alternatives</a></li>
+  </ul></li>
+  <li><a href="#data-availability" id="toc-data-availability" class="nav-link" data-scroll-target="#data-availability">Data availability</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Generating Correlated Data for Omics Simulation</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Authors</div>
+  <div class="quarto-title-meta-heading">Affiliations</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">Jianing Yang <a href="https://orcid.org/0000-0002-2048-9398" class="quarto-title-author-orcid"> <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg=="></a></p>
+  </div>
+    <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Institute for Translational Medicine and Therapeutics, University of Pennsylvania
+          </p>
+        <p class="affiliation">
+            Chronobiology and Sleep Institute, University of Pennsylvania
+          </p>
+      </div>
+      <div class="quarto-title-meta-contents">
+    <p class="author">Gregory R. Grant <a href="https://orcid.org/0000-0002-0139-7658" class="quarto-title-author-orcid"> <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg=="></a></p>
+  </div>
+    <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Institute for Translational Medicine and Therapeutics, University of Pennsylvania
+          </p>
+      </div>
+      <div class="quarto-title-meta-contents">
+    <p class="author">Thomas G. Brooks <a href="https://orcid.org/0000-0002-6980-0079" class="quarto-title-author-orcid"> <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg=="></a></p>
+  </div>
+    <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Institute for Translational Medicine and Therapeutics, University of Pennsylvania
+          </p>
+      </div>
+    </div>
+
+<div class="quarto-title-meta">
+
+      
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="abstract" class="level2">
+<h2 class="anchored" data-anchor-id="abstract">Abstract</h2>
+<p>Simulation of realistic omics data is a key input for benchmarking studies that help users obtain optimal computational pipelines. Omics data involves large numbers of measured features on each samples and these measures are generally correlated with each other. However, simulation too often ignores these correlations, perhaps due to the inconvenience and computational hurdles of doing so. We describe and implement three approaches based off decomposing the covariance matrix into a diagonal part and a low-rank part and using a Gaussian copula approach. These approaches are efficient at omics-scale problems. We demonstrate the importance of including correlation in two benchmarking applications. First, we show that variance of results from the popular DESeq2 method increases when dependence is included. Second, we demonstrate that a method, CYCLOPS, for inferring circadian time of collection from transcriptomics performs substantially worse or better under different dependence situations. We provide an R package, dependentsimr, that has efficient implementations of these methods and can generate dependent data with arbitrary distributions, including discrete (binary, ordered categorical, Poisson, negative binomial), continuous (normal), or with an empirical distribution.</p>
+</section>
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>Omics data is in the <span class="math inline">\(p \gg n\)</span> regime where there are fewer samples than measurements per sample. This creates dual challenges in generating realistic simulated data for the purposes of benchmarking. First, there isn’t enough data to be able to compute a dependence structure (e.g., a full-rank correlation matrix). Second, generating omics-scale data with a specified correlation matrix is slow due to the typical <span class="math inline">\(O(p^3)\)</span> nature of these algorithms. These often mean that simulators assume independence of the measurements, which does not reflect reality.</p>
+<p>Recently, we wrote guidelines for performing omics benchmarking <span class="citation" data-cites="Brooks2024">(<a href="#ref-Brooks2024" role="doc-biblioref">Brooks et al. 2024</a>)</span> and encouraged authors to ensure that any simulated data includes realistic correlation and dependence of measurements within a sample. However, this highlighted that one reason dependence is often neglected is the relatively lack of guidance for how to achieve it and that existing solutions are cumbersome.</p>
+<p>Here, we give solutions to this problem by using a correlation matrix that decomposes into a diagonal part and a low-rank part to both approximate realistic dependencies in a real data set and generate simulated data mimicking the real data. Using a Gaussian copula approach (also referred to as NORTA, for “normal to anything” <span class="citation" data-cites="norta">(<a href="#ref-norta" role="doc-biblioref">Cario and Nelson 1997</a>)</span>), the marginal (univariate) distributions can have realistic forms. These solutions operate by taking a real dataset and mimicking it. We implement this strategy as an R package which supports normal, Poisson, DESeq2-based (negative binomial with sample-specific size factors), and empirical (for ordinal data) marginal distributions. This makes it particularly suited to RNA-seq data but also widely applicable. Moreover, it supports multi-modal data such as for multi-omics.</p>
+<p>We implement three different strategies for determining the diagonal and low-rank parts of the covariance matrix. First, the ‘PCA’ method uses principal component analysis (PCA) and picks the low-rank part such that the simulated data has the same variance in the top <span class="math inline">\(k\)</span> PCA components of the reference dataset. Second, the ‘spiked Wishart’ method fits <span class="math inline">\(k\)</span> components such that simulations with the same number of samples as the reference dataset will have, on average, the same PCA component variances as the reference. Unlike ‘PCA’, these variances are computed with resepect to the simulated data’s own PCA and not using the PCA weights of the reference dataset. Third, the ‘corpcor’ method uses the popular R library <code>corpcor</code>, which implements a James-Stein type shrinkage estimator for the covariance matrix as a linear interpolation of the sample covariance matrix and a diagonal matrix. No method exactly captures the input data, indicating room for future research, but all improve upon the common approach of assuming independence.</p>
+<p>We show two applications which demonstrate the importance of including dependence of measurements in simulated data when benchmarking computational pipelines. First, we simulate RNA-seq data with differential expression between two conditions. Using DESeq2 to determine the differentially expressed genes, we found that dependence had little impact on the accuracy of reported <span class="math inline">\(p\)</span>-values but increased the variance of those estimates. Second, we simulated a time series of RNA-seq data points and used the CYCLOPS method to infer collection time from the RNA-seq data, without time labels. Surprisingly, we found that including dependence in the data set improved the performance of CYCLOPS.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<section id="comparison-to-real-data" class="level3">
+<h3 class="anchored" data-anchor-id="comparison-to-real-data">Comparison to Real Data</h3>
+<p>To compare the three simulation methods with a real data set, we chose as a references data set 12 mouse cortex RNA-seq samples from accession GSE151923 <span class="citation" data-cites="Wang2022">(<a href="#ref-Wang2022" role="doc-biblioref">Wang et al. 2022</a>)</span>. We then simulated data mimicking this reference using all three simulation methods (PCA, spiked Wishart, and corpcor) as well as a simulation with independent genes. We repeated the simulations, each of 12 samples, a total of 8 times to estimate variance. For the PCA method, we used <span class="math inline">\(k=2\)</span> dimensions and for the spiked Wishart, <span class="math inline">\(k=11\)</span>. The coprcor method always uses the full data matrix, analogous to <span class="math inline">\(k=11\)</span>. Note that PCA method must use a rank <span class="math inline">\(k&lt;11\)</span> in order to generate full-rank data, see Methods, so these parameters are not directly comparable across methods.</p>
+<p>Simulated data captures the genes’ mean and variance accurately (<a href="#fig-compare-to-real" class="quarto-xref">Figure&nbsp;1</a> a-b). Next, we compared to the real data set when projected onto the top two principal components of the real data set (<a href="#fig-compare-to-real" class="quarto-xref">Figure&nbsp;1</a> c). The simulations with dependence are distributed around the entire space like the real data, but the independent simulations have unrealistically low variance in these components, clustering tightly around the origin.</p>
+<p>Then, we computed the gene-gene correlation on pairs of high-expressed genes (at least 300 mean reads). The simulation with independence showed the least levels of gene-gene correlations (<a href="#fig-compare-to-real" class="quarto-xref">Figure&nbsp;1</a> d). However, the PCA method overshot the reference data set and the spiked Wishart and corpcor methods only slightly improved upon the independent simulation.</p>
+<p>Lastly, we compared the variances of principal components on each data set (<a href="#fig-compare-to-real" class="quarto-xref">Figure&nbsp;1</a> e). These were computed separately for each data set, unlike (<a href="#fig-compare-to-real" class="quarto-xref">Figure&nbsp;1</a> c) which used the reference data set’s PCA weights for all data sets. The independent data has much lower variance than the real data set in the top four principal components. The spiked Wishart method comes closest to the real data set, as it optimizes for fitting these values. Surprisingly, the corpcor method performs only somewhat better than the independent method. The PCA method puts a large amount of variance into the first two components (due to using <span class="math inline">\(k=2\)</span>) and then undershoots the other components.</p>
+<div class="cell" data-hash="paper_cache/html/fig-compare-to-real_c343f9d191db6daef7d2272b31d865fb">
+<div class="cell-output-display">
+<div id="fig-compare-to-real" class="quarto-figure quarto-figure-center anchored" width="960">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-compare-to-real-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="paper_files/figure-html/fig-compare-to-real-1.png" class="img-fluid figure-img" width="960">
+</div>
+<figcaption class="figure quarto-float-caption quarto-float-fig" id="fig-compare-to-real-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Comparison to real data run on a mouse cortex data set from GSE151923. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled in real and PCA simulated data. The line of equality is marked in black. Points are colored according to the density of points in their region. Wishart and corpcor methods give similar results (not shown). (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). Genes with at least 300 reads were used. Values on the diagonal line indicate a match between the simulated and real data sets. (d) Projections onto the top two principal components of the real data set for both real and simulated data. All 8 simulations (96 samples for each simulation) shown. (e) Principal component analysis was performed on all data sets and the variance captured by the top components is shown. Unlike (d), these components were fit from each data set considered separately instead of reusing the weights from the real data.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="deseq2-application" class="level3">
+<h3 class="anchored" data-anchor-id="deseq2-application">DESeq2 Application</h3>
+<p>We benchmarked DESeq2 <span class="citation" data-cites="Love2014">(<a href="#ref-Love2014" role="doc-biblioref">Love, Huber, and Anders 2014</a>)</span>, a popular differential expression analysis tool, using data sets simulated with dependence and ones simulated without dependence to compare its performances on both. DESeq2 presents an interesting case because several aspects of it assume independence of genes and so may be adversely affected by gene-gene dependence. First, the independent filtering step <span class="citation" data-cites="Bourgon2010-uv">(<a href="#ref-Bourgon2010-uv" role="doc-biblioref">Bourgon, Gentleman, and Huber 2010</a>)</span> assumes independence but has been reported to be robust to typical gene-gene dependence. Relatedly, the false discovery rate (FDR) <span class="citation" data-cites="BH_FDR">(<a href="#ref-BH_FDR" role="doc-biblioref">Benjamini and Hochberg 1995</a>)</span> allows only certain forms of dependence. Lastly, DESeq2’s empirical Bayes steps could possibly be affected by gene dependence.</p>
+<p>We used a fly whole body RNA-Seq data set GSE81142 and selected samples of male flies without treatment and after at least 2 hours of feeding to simulate 5 “control” samples. We then randomly select 5% of the genes to be up or down regulated, with <span class="math inline">\(\log_2\)</span> fold change uniformly distributed between <span class="math inline">\(0.2\)</span> and <span class="math inline">\(2.0\)</span>, either up or down chosen randomly, and simulated 5 “experimental” samples. This was repeated 20 times for each of four dependence conditions (independent, PCA, Wishart, and corpcor).</p>
+<p>Finally, we ran DESeq2 on each simulated 5 vs 5 experiment and compared the output FDR with the true percentages of genes that are differential expressed (<a href="#fig-DESeq2" class="quarto-xref">Figure&nbsp;2</a> a-d). We observed that DESeq2 is anti-conservative on both data sets, with similar mean true FDRs for each estimated FDR cutoff. However, there was a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it performs less consistently on data sets with gene-gene dependence, as in real data sets.</p>
+<p>To demonstrate the application of our simulation method for another organism, we also simulated data sets using mouse cortex data set GSE151923 <span class="citation" data-cites="Wang2022">(<a href="#ref-Wang2022" role="doc-biblioref">Wang et al. 2022</a>)</span> and selected samples from male mice. We then simulated differential expression experiments as above and observed a similar result (<a href="#fig-DESeq2" class="quarto-xref">Figure&nbsp;2</a> e-f) as for the fly whole body data sets.</p>
+<div class="cell" data-hash="paper_cache/html/fig-DESeq2_964c5fdbeec0991a557477c685ba0d4b">
+<div class="cell-output-display">
+<div id="fig-DESeq2" class="quarto-figure quarto-figure-center anchored" width="1152">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-DESeq2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="paper_files/figure-html/fig-DESeq2-1.png" class="img-fluid figure-img" width="1152">
+</div>
+<figcaption class="figure quarto-float-caption quarto-float-fig" id="fig-DESeq2-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Performance of DESeq2 on simulated datasets. (a-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence, (b) using PCA, (c) using Wishart and (d) using corpcor. Diagonal line represents perfect estimation of FDR. (e-h) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923), (e) without dependence, (f) using PCA, (g) using Wishart and (h) using corpcor.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="cyclops-application" class="level3">
+<h3 class="anchored" data-anchor-id="cyclops-application">CYCLOPS Application</h3>
+<p>We next used our simulation method to benchmark CYCLOPS <span class="citation" data-cites="Anafi2017">(<a href="#ref-Anafi2017" role="doc-biblioref">Anafi et al. 2017</a>)</span>, which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse liver time series data set GSE151565, which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point. We then use these to simulate 20 time series data sets for each of the independent, PCA, Wishart, and corpcor simulation methods.</p>
+<p>We ran CYCLOPS on each data set with a list of cyclic mouse liver genes (from <span class="citation" data-cites="Zhang2014">(<a href="#ref-Zhang2014" role="doc-biblioref">Zhang et al. 2014</a>)</span>, JTK p-value <span class="math inline">\(&lt;0.05\)</span>), which yielded an estimated relative time for each sample. We evaluated CYCLOPS’ performance compared to true circadian time using the circular correlation <span class="citation" data-cites="correlation_coeff">(<a href="#ref-correlation_coeff" role="doc-biblioref">Fisher and Lee 1983</a>)</span>, defined as follows: <span class="math display">\[\rho = \frac{\sum_{1\leq i&lt;j\leq n}\sin(X_i-X_j) \sin(Y_i-Y_j)}{(\sum_{1\leq i&lt;j\leq n} \sin(X_i-X_j)^2)^{1/2}(\sum_{1\leq i&lt;j\leq n} \sin(Y_i-Y_j)^2)^{1/2}},\]</span> where <span class="math inline">\(n\)</span> is the number of samples, <span class="math inline">\(X_i\)</span> and <span class="math inline">\(Y_i\)</span> are the true time and CYCLOPS-estimated time, respectively, for the <span class="math inline">\(i\)</span>-th sample. <span class="math inline">\(\rho\)</span> has value between <span class="math inline">\(-1\)</span> and <span class="math inline">\(1\)</span>, and a <span class="math inline">\(|\rho|\)</span> close to <span class="math inline">\(1\)</span> indicates accurate predictions by CYCLOPS.</p>
+<p>We find that CYCLOPS performance depends significantly on the dependence structure of the simulated time series data (<a href="#fig-CYCLOPS" class="quarto-xref">Figure&nbsp;3</a>), indicating that the presence of gene-gene dependence is highly impactful on CYCLOPS’ performance. Overall, CYCLOPS performance is poor in the independent data and improved in both PCA and corpcor data, but surprisingly the Wishart data also shows poor performance. Since by default CYCLOPS performs dimension reduction to the number of dimensions needed to capture 99% of the variance, this performance difference is likely due to the number of eigengenes needed by CYCLOPS to meet the variance threshold (<a href="#fig-CYCLOPS" class="quarto-xref">Figure&nbsp;3</a> b).</p>
+<div class="cell" data-hash="paper_cache/html/fig-CYCLOPS_7c6eb2fb1028d9634f40b5ce9cb8ecff">
+<div class="cell-output-display">
+<div id="fig-CYCLOPS" class="quarto-figure quarto-figure-center anchored" width="1152">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-CYCLOPS-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="paper_files/figure-html/fig-CYCLOPS-1.png" class="img-fluid figure-img" width="1152">
+</div>
+<figcaption class="figure quarto-float-caption quarto-float-fig" id="fig-CYCLOPS-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with the four methods. (b) Violin plot comparing the number of eigengenes used by CYCLOPS between the four methods; the red dotted line indicates the number of eigengenes used by CYCLOPS on the real data (13). (c-f) Examples of CYCLOPS estimated phases on the simulated data sets. CYCLOPS shows good performance when it separates out points by color (true circadian time).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>Assume that we have a reference dataset <span class="math inline">\(X\)</span> given by an <span class="math inline">\(p \times n\)</span> data matrix of <span class="math inline">\(p\)</span> features measured in each of <span class="math inline">\(n\)</span> independent samples. We want to capture correlations between the <span class="math inline">\(p\)</span> features, which could represent gene expressions, protein abundances, or other measured values. We refer to these features as genes for simplicity. Our goal is to generate simulated data with the same <span class="math inline">\(p\)</span> genes, the same marginal distributions of each gene as in <span class="math inline">\(X\)</span> and realistic gene-gene dependence.</p>
+<section id="gaussian-copula" class="level3">
+<h3 class="anchored" data-anchor-id="gaussian-copula">Gaussian Copula</h3>
+<p>All three methods are based off a well-known Gaussian copula approach. This operates first by normalizing each gene by fitting a distribution (such as a normal distribution, Poisson, negative binomial, or other form), and then applying the fit cumulative distribution function (CDF) to the observed values. Finally, those are fed to a standard normal distribution’s inverse CDF to obtain values that are approximately normally distributed. These values are then used to compute a covariance matrix <span class="math inline">\(\Sigma\)</span> and the data is assumed to follow a multivariate normal distribution in <span class="math inline">\(p\)</span> dimensions with that covariance matrix. Note that the sample covariance matrix is a poor choice for this <span class="math inline">\(\Sigma\)</span>. In general, the sample covariance matrix is at most rank <span class="math inline">\(n\)</span>, and will be approximately rank <span class="math inline">\(n-1\)</span> due to the normalization procedure. This means that generated data would lie on an <span class="math inline">\(n-1\)</span> dimensional hyperplane, which we know is unrealistic.</p>
+<p>Instead, we want to estimate some other matrix of the form <span class="math inline">\(\Sigma = D + PP^T\)</span> where <span class="math inline">\(D\)</span> is <span class="math inline">\(p \times p\)</span> diagonal and <span class="math inline">\(P\)</span> is <span class="math inline">\(p \times k\)</span> for <span class="math inline">\(k \ll p\)</span>. This means that <span class="math inline">\(P P^T\)</span> is low-rank. Conveniently, this form allows efficient simulation of multivariate normal data <span class="math inline">\(N(0, \Sigma)\)</span>. Once data is obtained <span class="math inline">\(Z \sim N(0, \Sigma)\)</span>, then one can undo the normalization process to obtain data with the same marginal distributions as the fit marginal distributions but with dependence determined by <span class="math inline">\(\Sigma\)</span>. We describe this in detail below:</p>
+<ol type="1">
+<li>Fit marginal distributions to each feature in <span class="math inline">\(X\)</span> to determine CDFs <span class="math inline">\(F_{i}\)</span> for each feature.</li>
+<li>Transform <span class="math inline">\(X\)</span> to normalized values by <span class="math inline">\(Z_{ij} = \Phi^{-1}(F_{i}(X_{ij}))\)</span> where <span class="math inline">\(\Phi\)</span> is the CDF of the standard normal distribution.</li>
+<li>Compute <span class="math inline">\(D\)</span>, <span class="math inline">\(U\)</span>, <span class="math inline">\(W\)</span> matrices from <span class="math inline">\(X\)</span> by one of three methods (below).</li>
+<li>Generate <span class="math inline">\(k\)</span> i.i.d. standard normally distributed values <span class="math inline">\(u\)</span> and <span class="math inline">\(p\)</span> i.i.d standard normally distributed values <span class="math inline">\(v\)</span>.</li>
+<li>Set <span class="math inline">\(Z' = UWu + D v\)</span>.</li>
+<li>Output the vector <span class="math inline">\(X'\)</span> where <span class="math inline">\(X'_i = F_i^{-1}(\Phi(Z'))\)</span>.</li>
+</ol>
+<p>The generated data <span class="math inline">\(Z'\)</span> has covariance matrix <span class="math inline">\(\Sigma = D^2 + U W U^T\)</span>. Moreover, we require that <span class="math inline">\(\Sigma\)</span> satisfies that <span class="math inline">\(e_i \Sigma e_i^T\)</span> is approximately 1. That guarantees that the output <span class="math inline">\(X'\)</span> has each entry with the same marginal distributions <span class="math inline">\(F_i\)</span> as was originally fit and inherits gene-gene dependence from <span class="math inline">\(Z'\)</span>.</p>
+<p>This is a standard Gaussian copula approach tailored to our specific format of <span class="math inline">\(\Sigma\)</span>. Most implementations of this approach instead rely upon performing a Cholesky decomposition of <span class="math inline">\(\Sigma\)</span>, which requires significant time and memory resources for omics-scale problems with over tens of thousands of genes.</p>
+</section>
+<section id="pca-method" class="level3">
+<h3 class="anchored" data-anchor-id="pca-method">PCA Method</h3>
+<p>The first of our three methods attempts to match the top <span class="math inline">\(k\)</span> PCA components of the normalized reference dataset <span class="math inline">\(Z\)</span>. Specifically, let <span class="math inline">\(u_1, \ldots, u_k\)</span> be the left singular vectors of <span class="math inline">\(Z\)</span> with <span class="math inline">\(\lambda_1, \ldots, \lambda_k\)</span> the corresponding top <span class="math inline">\(k\)</span> signular values. This method computes <span class="math inline">\(\Sigma\)</span> such that <span class="math inline">\(u_i^T \Sigma u_i = \lambda_i^2\)</span>, i.e.&nbsp;that the variance in the direction of <span class="math inline">\(u_i\)</span> exactly matches of the reference dataset’s variance in that same direction. One solution is to use the sample covariance matrix, but that is not full rank and would match for all <span class="math inline">\(i \leq n\)</span> instead of just <span class="math inline">\(i \leq k\)</span>. Instead, we use the following:</p>
+<ol type="1">
+<li>Compute <span class="math inline">\(A_{ij} = \delta_{ij} - \sum_\ell U_{\ell,i}^2 U_{\ell,j}^2\)</span> and <span class="math inline">\(B_{i} = \lambda_i^2/(n-1)^2 - \sum_\ell U_{\ell,i}^2 V_{\ell\ell}\)</span> where <span class="math inline">\(\delta_{ij}\)</span> is the Kronecker delta and <span class="math inline">\(V = Z^T Z / (n-1)\)</span> is the covariance matrix of <span class="math inline">\(Z\)</span>.</li>
+<li>Solve <span class="math inline">\(A w = B\)</span> and set <span class="math inline">\(W\)</span> to be the diagonal matrix with <span class="math inline">\(w\)</span> along its diagonal.</li>
+<li>Set <span class="math inline">\(U\)</span> to be the <span class="math inline">\(p \times k\)</span> matrix with columns <span class="math inline">\(u_i\)</span>.</li>
+<li>Set <span class="math inline">\(D\)</span> to be the diagonal matrix with <span class="math inline">\(D_{ii} = \sqrt{V_{ii} - (UW^2U^T)_{ii}}\)</span>, which is the remaining variance.</li>
+</ol>
+<p>Steps 1 and 2 give that <span class="math inline">\(u_i \Sigma u_i^T = \lambda_i\)</span> for <span class="math inline">\(i = 1, \ldots, k\)</span>. Step 4 ensures that <span class="math inline">\(e_j \Sigma e_j^T = 1\)</span> for <span class="math inline">\(j = 1, \ldots, p\)</span>.</p>
+</section>
+<section id="spiked-wishart-method" class="level3">
+<h3 class="anchored" data-anchor-id="spiked-wishart-method">Spiked Wishart Method</h3>
+<p>The second method also makes use of PCA but has a different objective. If <span class="math inline">\(n\)</span> samples are drawn from <span class="math inline">\(N(0, \Sigma)\)</span> then we want the variances of their PCA components to match those of the reference dataset. Specifically, let <span class="math inline">\(\lambda_1, \ldots, \lambda_{n-1}\)</span> be the <span class="math inline">\({n-1}\)</span> non-zero singular values of <span class="math inline">\(Z\)</span> (<span class="math inline">\(\lambda_n\)</span> is always approximately zero due to the normalization procedure), and let <span class="math inline">\(\lambda'_1, \ldots, \lambda'_{n-1}\)</span> be the singular values of <span class="math inline">\(Z'\)</span> where <span class="math inline">\(Z'\)</span> has <span class="math inline">\(n-1\)</span> columns each iid <span class="math inline">\(N(0, \Sigma)\)</span>. Then we want to choose <span class="math inline">\(\Sigma\)</span> such that <span class="math inline">\(E[\lambda'_i] = \lambda_i\)</span> for each <span class="math inline">\(i\)</span>, where <span class="math inline">\(E[Y]\)</span> denotes the expectation of the random variable <span class="math inline">\(Y\)</span>.</p>
+<p>Since the distribution of the <span class="math inline">\(\lambda'_i\)</span> does not have a known analytic solution, we approximate this situation with the spiked Wishart distribution. The rank <span class="math inline">\(k-1\)</span> Wishart distribution is that of the sample covariance matrix of <span class="math inline">\(Y\)</span> where the <span class="math inline">\(n\)</span> columns of <span class="math inline">\(Y\)</span> are iid <span class="math inline">\(N(0, \Sigma)\)</span>. The spiked Wishart is the special case where <span class="math inline">\(\Sigma\)</span> has <span class="math inline">\(k\)</span> arbitrary eigenvalues and the remaining are all equal to a constant. Note that the singular values of <span class="math inline">\(Y\)</span> are the square roots of the eigenvalues of its sample covariance matrix. While our case has <span class="math inline">\(\Sigma\)</span> non-diagonal, <span class="math inline">\(\Sigma\)</span> may be diagonalized by orthogonal rotations due the sepctral theorem, and orthogonal rotations do not change the singular values of <span class="math inline">\(Y\)</span>. Therefore, the distribution of singular values is not affected by the assumption that <span class="math inline">\(\Sigma\)</span> is diagonal. Moreover, for the form <span class="math inline">\(\Sigma = D + U W U^T\)</span> where <span class="math inline">\(p\)</span> is very large, each column of <span class="math inline">\(U\)</span> is typically very close to orthogonal to any <span class="math inline">\(e_i\)</span>, a standard basis vector. Therefore, when <span class="math inline">\(D = cI\)</span> for some constant <span class="math inline">\(c\)</span>, we can approximate <span class="math inline">\(\Sigma\)</span> as having <span class="math inline">\(k\)</span> arbitrary eigenvalues from <span class="math inline">\(W\)</span> and <span class="math inline">\(n\)</span> remaining eigenvalues all equal to <span class="math inline">\(c\)</span> corresponding to <span class="math inline">\(D\)</span>. This is a spiked Wishart distribution.</p>
+<p>However, the spiked Wishart distribution also has no known analytic solution for the distribution of its eigenvalues either. Therefore, we use an efficient sampling and stochastic gradient descent method that we recently described <span class="citation" data-cites="wishart">(<a href="#ref-wishart" role="doc-biblioref">Brooks 2024</a>)</span>. Since the dataset has been normalized, <span class="math inline">\(c\)</span> will be close to one and <span class="math inline">\(e_i \Sigma e_i^T \approx 1\)</span>.</p>
+<p>Specifically, we do:</p>
+<ol type="1">
+<li>Set <span class="math inline">\(U\)</span> to be the <span class="math inline">\(p \times k\)</span> matrix with columns <span class="math inline">\(u_i\)</span>, the left singular vectors of <span class="math inline">\(Z\)</span>.</li>
+<li>Compute <span class="math inline">\(w_1, \ldots, w_k\)</span> and <span class="math inline">\(c\)</span> by stochastic gradient descent minimizing <span class="math inline">\(\sum_{i} (E[\lambda'_i] - \lambda_i)^2\)</span> for <span class="math inline">\(\Sigma\)</span> diagonal with entries <span class="math inline">\(w_1, \ldots, w_k, c, \ldots, c\)</span>.</li>
+<li>Set <span class="math inline">\(W\)</span> diagonal with the entries <span class="math inline">\(w_1, \ldots, w_k\)</span>.</li>
+<li>Set <span class="math inline">\(D = cI\)</span></li>
+</ol>
+</section>
+<section id="corpcor-method" class="level3">
+<h3 class="anchored" data-anchor-id="corpcor-method">Corpcor Method</h3>
+<p>The <code>corpcor</code> package <span class="citation" data-cites="SchaferStrimmer2005 OpgenRheinStrimmer2007">(<a href="#ref-SchaferStrimmer2005" role="doc-biblioref">Schäfer and Strimmer 2005</a>; <a href="#ref-OpgenRheinStrimmer2007" role="doc-biblioref">Opgen-Rhein and Strimmer 2007</a>)</span> computes a James-Stein type shrinkage estimator for the covariance matrix. For large <span class="math inline">\(p\)</span>, this greatly improves the estimate of the covariance matrix by introducing a little bias towards zero correlations and equal variances of genes. It computes optimal values of <span class="math inline">\(\lambda_1\)</span>, and <span class="math inline">\(\lambda_2\)</span>, its two regularization coefficients. It then uses <span class="math inline">\(\lambda_1\)</span> to linearly interpolate the sample covariance matrix towards the identity matrix <span class="math inline">\(I\)</span> and <span class="math inline">\(\lambda_2\)</span> to interpolate the vector of variances towards the median variance value. Since the sample covariance matrix is rank at most <span class="math inline">\(n\)</span>, we again obtain a matrix of the form <span class="math inline">\(\Sigma = D + UWU^T\)</span>.</p>
+<p>This algorithm is:</p>
+<ol type="1">
+<li>Compute the <span class="math inline">\(\lambda_1\)</span> and <span class="math inline">\(\lambda_2\)</span> values from <code>corpcor::estimate.lambda</code> and <code>corpcor::estimate.lambda.var</code> functions on <span class="math inline">\(Z\)</span>, respectively.</li>
+<li>Set <span class="math inline">\(D\)</span> to be diagonal with <span class="math inline">\(D_{ii} = \sqrt{\lambda_1} (\lambda_2 \sigma_{med} + (1 - \lambda_2) \sigma_i)\)</span> where <span class="math inline">\(\sigma_i\)</span> is the standard deviation of the <span class="math inline">\(Z_{i\cdot}\)</span> and <span class="math inline">\(\sigma_{med}\)</span> is the median of the <span class="math inline">\(\sigma_i\)</span>.</li>
+<li>Set <span class="math inline">\(U\)</span> to be <span class="math inline">\(\sqrt{1-\lambda} S Z / \sqrt{n-1}\)</span> where <span class="math inline">\(S\)</span> is the diagonal matrix with <span class="math inline">\(S_{ii} = \lambda_2 \sigma_{med} / \sigma_i + (1 - \lambda_2)\)</span>.</li>
+<li>Set <span class="math inline">\(W\)</span> to the identity.</li>
+</ol>
+</section>
+</section>
+<section id="discussion" class="level2">
+<h2 class="anchored" data-anchor-id="discussion">Discussion</h2>
+<p>We present <code>dependentsimr</code>, an R package that generates omics-scale data with realistic correlation. We demonstrate this package on RNA-seq data, using the DESeq2 method to fit negative binomial marginal distributions. However, this package is actually quite general and supports normal, Poisson, negative binomial, and arbitrary ordered discrete distributions using the empirical CDF. Moreover, it can support multi-modal data such as is increasingly common in multi-omics.</p>
+<p>We demonstrate the importance of including gene-gene dependence in simulated data by two application benchmarks. In the first, we demonstrate that DESeq2 results are substantially more variable when simulating with gene-gene dependence. In the second, we demonstrate that the performance of CYCLOPS in estimating circadian phases depends upon gene-gene dependence, with an unexpected result of better performance in the dependent case.</p>
+<p>Our comparisons to a real dataset show that none of our three methods are able to exactly capture some aspects of the real dataset. In particular, the gene-gene correlations were too high in the PCA method and too low in the spiked Wishart and corpcor methods. Surprisingly, spiked Wishart and corpcor methods improved in this metric only slightly compared to the simulations with independent genes. These observations demonstrate that there is room for future improvements over independent data in these techniques and possibly demonstrate that the datasets are too far from a multivariate normal distribution even after normalization. Nonetheless, these methods represent significant improvements by other metrics and we recommend the inclusion of some dependence in nearly every simulated dataset. We highlight some alternatives that have been taken below.</p>
+<section id="alternatives" class="level3">
+<h3 class="anchored" data-anchor-id="alternatives">Alternatives</h3>
+<p>The R package <a href="https://github.com/CenterForStatistics-UGent/SPsimSeq">SPsimSeq</a> <span class="citation" data-cites="Assefa2020">(<a href="#ref-Assefa2020" role="doc-biblioref">Assefa, Vandesompele, and Thas 2020</a>)</span> provides a dedicated RNA-seq and single-cell RNA-seq simulator using a Gaussian copula approach to simulate gene dependence. In contrast to this package, it uses WGCNA to determine the correlation matrix, which is a gene network approach. However, this method takes significant computational resources. Indeed, the <code>SPsimSeq</code> paper generated data for just 5000 genes based on a randomly sampled 5000 gene subset of the RNA-seq data and our attempts to use <code>SPsimSeq</code> to generate a full sample exhausted the memory of a 24GB computer. In contrast, our method runs in seconds to generate a 40,000 gene samples on the same computer. <code>SPsimSeq</code> is more specialized and full-featured for RNA-seq simulation, providing, for example, native differential expression (DE) options. In comparison, our <code>dependentsimr</code> package requires manually setting marginal expression values to inject DE, but also supports other marginal distributions for situations outside of RNA-seq.</p>
+<p>The <a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02367-2">scDesign2</a> simulator <span class="citation" data-cites="Sun2021">(<a href="#ref-Sun2021" role="doc-biblioref">Sun et al. 2021</a>)</span> for single-cell RNA-seq also uses Gaussian copula and, like our method, uses the approach of estimating the correlation matrix from the normalized dataset. However, it limits this correlation matrix to top-expressed genes. Since correlation is most discernible in high-expressed genes, this approach is reasonable but requires making certain arbitrary cutoffs that our methods avoid.</p>
+<p>Other Gaussian copula-based R packages that may be applicable, at least for datasets with smaller numbers of features, include <code>bindata</code>, <code>GenOrd</code>, and <code>SimMultiCorrData</code>, the last of these being the most comprehensive. The <code>bigsimr</code> package provides faster implementations of these methods to scale up to omics-level data. However, even this is computationally demanding; their paper references generating 20,000-dimensional vectors in “under an hour” using 16 threads. The <code>copula</code> package provides even more flexible dependence options through use of copulas. All of these packages provide more flexibility in specifying dependence than our package, which can only mimic existing datasets, and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.</p>
+</section>
+</section>
+<section id="data-availability" class="level2">
+<h2 class="anchored" data-anchor-id="data-availability">Data availability</h2>
+<p>Source code for all simulations and figures in this plot is available at <a href="https://github.com/itmat/dependent_sim_paper/">github.com/itmat/dependent_sim_paper/</a>. All data used is available from GSE151923, GSE81142, GSE151565.</p>
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-Anafi2017" class="csl-entry" role="listitem">
+Anafi, Ron C, Lauren J Francey, John B Hogenesch, and Junhyong Kim. 2017. <span>“<span>CYCLOPS</span> Reveals Human Transcriptional Rhythms in Health and Disease.”</span> <em>Proc. Natl. Acad. Sci. U. S. A.</em> 114 (20): 5312–17.
+</div>
+<div id="ref-Assefa2020" class="csl-entry" role="listitem">
+Assefa, Alemu Takele, Jo Vandesompele, and Olivier Thas. 2020. <span>“<span>SPsimSeq</span>: Semi-Parametric Simulation of Bulk and Single-Cell <span class="nocase">RNA-sequencing</span> Data.”</span> <em>Bioinformatics</em> 36 (10): 3276–78.
+</div>
+<div id="ref-BH_FDR" class="csl-entry" role="listitem">
+Benjamini, Yoav, and Yosef Hochberg. 1995. <span>“Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing.”</span> <em>Journal of the Royal Statistical Society. Series B (Methodological)</em> 57 (1): 289–300. <a href="http://www.jstor.org/stable/2346101">http://www.jstor.org/stable/2346101</a>.
+</div>
+<div id="ref-Bourgon2010-uv" class="csl-entry" role="listitem">
+Bourgon, Richard, Robert Gentleman, and Wolfgang Huber. 2010. <span>“Independent Filtering Increases Detection Power for High-Throughput Experiments.”</span> <em>Proc. Natl. Acad. Sci. U. S. A.</em> 107 (21): 9546–51.
+</div>
+<div id="ref-wishart" class="csl-entry" role="listitem">
+Brooks, Thomas G. 2024. <span>“Sampling Spiked Wishart Eigenvalues.”</span> <a href="https://arxiv.org/abs/2410.05280">https://arxiv.org/abs/2410.05280</a>.
+</div>
+<div id="ref-Brooks2024" class="csl-entry" role="listitem">
+Brooks, Thomas G., Nicholas F. Lahens, Antonijo Mrčela, and Gregory R. Grant. 2024. <span>“Challenges and Best Practices in Omics Benchmarking.”</span> <em>Nature Reviews Genetics</em> 25 (5): 326–39. <a href="https://doi.org/10.1038/s41576-023-00679-6">https://doi.org/10.1038/s41576-023-00679-6</a>.
+</div>
+<div id="ref-norta" class="csl-entry" role="listitem">
+Cario, Marne C., and Barry L. Nelson. 1997. <span>“Modeling and Generating Random Vectors with Arbitrary Marginal Distributions and Correlation Matrix.”</span>
+</div>
+<div id="ref-correlation_coeff" class="csl-entry" role="listitem">
+Fisher, N. I., and A. J. Lee. 1983. <span>“<span class="nocase">A correlation coefficient for circular data</span>.”</span> <em>Biometrika</em> 70 (2): 327–32. <a href="https://doi.org/10.1093/biomet/70.2.327">https://doi.org/10.1093/biomet/70.2.327</a>.
+</div>
+<div id="ref-Love2014" class="csl-entry" role="listitem">
+Love, Michael I, Wolfgang Huber, and Simon Anders. 2014. <span>“Moderated Estimation of Fold Change and Dispersion for <span class="nocase">RNA-seq</span> Data with <span>DESeq2</span>.”</span> <em>Genome Biol.</em> 15 (12): 550.
+</div>
+<div id="ref-OpgenRheinStrimmer2007" class="csl-entry" role="listitem">
+Opgen-Rhein, Rainer, and Korbinian Strimmer. 2007. <em>Statistical Applications in Genetics and Molecular Biology</em> 6 (1). <a href="https://doi.org/doi:10.2202/1544-6115.1252">https://doi.org/doi:10.2202/1544-6115.1252</a>.
+</div>
+<div id="ref-SchaferStrimmer2005" class="csl-entry" role="listitem">
+Schäfer, Juliane, and Korbinian Strimmer. 2005. <em>Statistical Applications in Genetics and Molecular Biology</em> 4 (1). <a href="https://doi.org/doi:10.2202/1544-6115.1175">https://doi.org/doi:10.2202/1544-6115.1175</a>.
+</div>
+<div id="ref-Sun2021" class="csl-entry" role="listitem">
+Sun, Tianyi, Dongyuan Song, Wei Vivian Li, and Jingyi Jessica Li. 2021. <span>“scDesign2: A Transparent Simulator That Generates High-Fidelity Single-Cell Gene Expression Count Data with Gene Correlations Captured.”</span> <em>Genome Biol.</em> 22 (1): 163.
+</div>
+<div id="ref-Wang2022" class="csl-entry" role="listitem">
+Wang, Nan, Peter Langfelder, Matthew Stricos, Lalini Ramanathan, Jeffrey B Richman, Raymond Vaca, Mary Plascencia, et al. 2022. <span>“Mapping Brain Gene Coexpression in Daytime Transcriptomes Unveils Diurnal Molecular Networks and Deciphers Perturbation Gene Signatures.”</span> <em>Neuron</em> 110 (20): 3318–3338.e9.
+</div>
+<div id="ref-Zhang2014" class="csl-entry" role="listitem">
+Zhang, Ray, Nicholas F Lahens, Heather I Ballance, Michael E Hughes, and John B Hogenesch. 2014. <span>“A Circadian Gene Expression Atlas in Mammals: Implications for Biology and Medicine.”</span> <em>Proc. Natl. Acad. Sci. U. S. A.</em> 111 (45): 16219–24.
+</div>
+</div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    const typesetMath = (el) => {
+      if (window.MathJax) {
+        // MathJax Typeset
+        window.MathJax.typeset([el]);
+      } else if (window.katex) {
+        // KaTeX Render
+        var mathElements = el.getElementsByClassName("math");
+        var macros = [];
+        for (var i = 0; i < mathElements.length; i++) {
+          var texText = mathElements[i].firstChild;
+          if (mathElements[i].tagName == "SPAN") {
+            window.katex.render(texText.data, mathElements[i], {
+              displayMode: mathElements[i].classList.contains('display'),
+              throwOnError: false,
+              macros: macros,
+              fleqn: false
+            });
+          }
+        }
+      }
+    }
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        for (let i = 0; i < 2; i++) {
+          container.appendChild(note.children[i].cloneNode(true));
+        }
+        typesetMath(container);
+        return container.innerHTML
+      } else {
+        typesetMath(note);
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      typesetMath(note);
+      return note.innerHTML;
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

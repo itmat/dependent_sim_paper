@@ -6,6 +6,9 @@ library(tidyr)
 library(stringr)
 library(patchwork)
 
+TYPE_ORDER <- c("indep", "pca", "wishart", "corpcor")
+TYPE_COLORS <- RColorBrewer::brewer.pal(4, "Dark2")
+
 # formula for the circular correlation
 get_cir_corr <- function(X, Y) {
     sum1 <- 0
@@ -49,9 +52,11 @@ for (method in c("indep", "pca", "wishart", "corpcor")) {
 
 # violin plot comparing circular correlation for simulated datasets with and without dependence
 corrs_new <- pivot_longer(corrs, cols = 1:4, names_to = "method")
-circular_correlation_violin <- ggplot(corrs_new, aes(method, abs(value))) +
+corrs_new$method <- factor(corrs_new$method, levels = TYPE_ORDER, ordered = TRUE)
+circular_correlation_violin <- ggplot(corrs_new, aes(method, abs(value), color=method)) +
     geom_violin() +
-    ylab("absolute circular correlation")
+    ylab("absolute circular correlation") +
+    scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="method")
 circular_correlation_violin
 
 # rainbow plots visualizing true_counts_counts_counts and estimated phases
@@ -80,10 +85,12 @@ eigen <- read_delim("num_eigengene.txt", col_names=c("num", "file")) |>
     mutate(method = str_extract(file, "./processed/cyclops/([a-z]+)", group=1))
 sim_eigen <- eigen |> filter(method != "real")
 real_eigens <- (eigen |> filter(method == "real"))$num
-eigen_violin <- ggplot(sim_eigen, aes(method, num)) +
+sim_eigen$method <- factor(sim_eigen$method, levels = TYPE_ORDER, ordered = TRUE)
+eigen_violin <- ggplot(sim_eigen, aes(method, num, color=method)) +
     geom_violin() +
     ylab("number of eigengenes") +
-    geom_hline(yintercept = 13, linetype = "dashed", color = "red")
+    scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="method") +
+    geom_hline(yintercept = 13, linetype = "dashed", color = "black")
 
 cyclops_plot <- circular_correlation_violin / 
     eigen_violin /

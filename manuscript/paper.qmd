@@ -118,11 +118,11 @@ Relatedly, the false discovery rate (FDR) [@BH_FDR] allows only certain forms of
 Lastly, DESeq2's empirical Bayes steps could possibly be affected by gene dependence.
 
 We used a fly whole body RNA-Seq data set GSE81142 and selected samples of male flies without treatment and after at least 2 hours of feeding to simulate 5 "control" samples.
-We then randomly select 5% of the genes to be up or down regulated, with $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, either up or down chosen randomly, and simulated 5 "experimental" samples.
+We then randomly selected 5% of the genes to be differentially expressed, with absolute $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, either up or down regulated chosen randomly, and simulated 5 "experimental" samples.
 This was repeated 20 times for each of four dependence conditions (independent, PCA, Wishart, and corpcor).
 
 Finally, we ran DESeq2 on each simulated 5 vs 5 experiment and compared the output FDR with the true percentages of genes that are differential expressed (@fig-DESeq2 a-d).
-We observed that DESeq2 is anti-conservative on both data sets, with similar mean true FDRs for each estimated FDR cutoff.
+We observed that DESeq2 is anti-conservative on all data sets, with similar mean true FDRs for each estimated FDR cutoff.
 However, there was a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it performs less consistently on data sets with gene-gene dependence, as in real data sets.
 
 To demonstrate the application of our simulation method for another organism, we also simulated data sets using mouse cortex data set GSE151923 [@Wang2022] and selected samples from male mice.
@@ -135,7 +135,7 @@ source("DE_plots.R")
 
 ```{r}
 #| label: fig-DESeq2
-#| fig-cap: "Performance of DESeq2 on simulated datasets. (a-d) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence, (b) using PCA, (c) using Wishart and (d) using corpcor.  Diagonal line represents perfect estimation of FDR. (e-h) Comparison of true FDR and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923), (e) without dependence, (f) using PCA, (g) using Wishart and (h) using corpcor."
+#| fig-cap: "Performance of DESeq2 on simulated datasets. (a-d) Comparison of true false discovery proportions and DESeq2 reported False Discovery Rates, plotted on a log scale, for data sets simulated from the fly whole body data set (GSE81142), (a) without dependence, (b) using PCA, (c) using Wishart and (d) using corpcor.  Diagonal line represents perfect estimation of FDR. (e-h) Comparison of true false discovery proportions and DESeq2 reported FDR for data sets simulated from the mouse cortex data set (GSE151923), (e) without dependence, (f) using PCA, (g) using Wishart and (h) using corpcor."
 #| fig-width: 12
 #| fig-height: 6
 DESeq2_fdr_plot
