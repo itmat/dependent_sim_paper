@@ -14,7 +14,7 @@ set.seed(55)
 # CONFIGURATION
 HIGH_EXPR_CUTOFF <- 300
 TYPE_ORDER <- c("real", "indep", "pca", "wishart", "corpcor")
-TYPE_COLORS <- RColorBrewer::brewer.pal(length(TYPE_ORDER), "Set2")
+TYPE_COLORS <- c("black", RColorBrewer::brewer.pal(length(TYPE_ORDER)-1, "Dark2"))
 
 # Load the real data ---------------------------------
 raw <- read_tsv("../data/GSE151923_metaReadCount_ensembl.txt.gz") |>
@@ -84,15 +84,15 @@ projected_corpcor <- predict(pca, t(scaled_draws_corpcor[!constant_rows, ]))
 projected_wishart <- predict(pca, t(scaled_draws_wishart[!constant_rows, ]))
 projected_indep_draws <- predict(pca, t(scaled_indep_draws[!constant_rows, ]))
 both_data <- data.frame(list(
-  PC1 = c(projected_read_data[,"PC1"], projected_draws[,"PC1"], projected_corpcor[,"PC1"], projected_wishart[,"PC1"], projected_indep_draws[,"PC1"]),
-  PC2 = c(projected_read_data[,"PC2"], projected_draws[,"PC2"], projected_corpcor[,"PC2"], projected_wishart[,"PC2"], projected_indep_draws[,"PC2"]),
-  type = c(
-    rep("real", nrow(projected_read_data)),
-    rep("pca", nrow(projected_draws)),
-    rep("corpcor", nrow(projected_draws)),
-    rep("wishart", nrow(projected_draws)),
-    rep("indep", nrow(projected_indep_draws))
-  )
+    PC1 = c(projected_read_data[1:12,"PC1"], projected_draws[1:12,"PC1"], projected_corpcor[1:12,"PC1"], projected_wishart[1:12,"PC1"], projected_indep_draws[1:12,"PC1"]),
+    PC2 = c(projected_read_data[1:12,"PC2"], projected_draws[1:12,"PC2"], projected_corpcor[1:12,"PC2"], projected_wishart[1:12,"PC2"], projected_indep_draws[1:12,"PC2"]),
+    type = c(
+        rep("real", 12),
+        rep("pca", 12),
+        rep("corpcor", 12),
+        rep("wishart", 12),
+        rep("indep", 12)
+    )
 )) %>%
   mutate(type = factor(type, levels=TYPE_ORDER, ordered=TRUE))
 #both_data$type <- factor(both_data$type, levels=c("real", "dependent sim", "independent sim"))
