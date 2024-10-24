@@ -34,6 +34,7 @@ rule all:
           method = ["indep", "pca", "wishart", "corpcor"], batch=range(0,20)),
         "processed/DE/Mouse.Cortex.Male.pca.fdr.csv",
         "manuscript/html",
+        "manuscript/docx",
 
 rule generate_sif:
     input:
@@ -209,8 +210,8 @@ rule generate_manuscript:
         index = "manuscript/paper.qmd",
         sif = "images/quarto.sif",
     output:
-        directory("manuscript/html")
+        directory("manuscript/{render_target}")
     container:
         "images/quarto.sif"
     shell:
-        "quarto render {input.index} --output-dir html --to html"
+        "quarto render {input.index} --output-dir {wildcards.render_target} --to {wildcards.render_target}"
