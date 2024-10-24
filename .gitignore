@@ -9,6 +9,7 @@ plots/
 manuscript/*cache
 manuscript/paper_files
 manuscript/html
+manuscript/paper.html
 .cache
 
 .Rhistory
