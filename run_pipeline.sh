@@ -13,4 +13,4 @@ source venv/bin/activate
 
 bsub -e logs/snakemake.err \
      -o logs/snakemake.out \
-     snakemake --use-singularity --profile lsf -j 100 -c 100 "$@"
+     snakemake --use-singularity --singularity-args \"--writable-tmpfs\" --profile lsf -j 100 -c 100 "$@"

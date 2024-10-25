@@ -81,16 +81,30 @@ for (method in c("indep", "pca", "wishart", "corpcor")) {
 }
 
 # plot the number of eigengenes used by CYCLOPS
-eigen <- read_delim("num_eigengene.txt", col_names=c("num", "file")) |> 
-    mutate(method = str_extract(file, "./processed/cyclops/([a-z]+)", group=1))
-sim_eigen <- eigen |> filter(method != "real")
-real_eigens <- (eigen |> filter(method == "real"))$num
+eigengenes <- list()
+for (method in c("indep", "pca", "wishart", "corpcor")) {
+    m <- list()
+    for (batch in 0:19) {
+        n <- read_csv(paste0("../processed/cyclops/",method,"/batch=",batch,"/cyclops_EigengeneExp.csv"), show_col_types = FALSE) |>
+            nrow()
+        m[[length(m)+1]] <- n
+    }
+    eigengenes[[length(eigengenes)+1]] <- tibble(
+        method = method,
+        num = unlist(m),
+    )
+}
+sim_eigen <- bind_rows(eigengenes)
 sim_eigen$method <- factor(sim_eigen$method, levels = TYPE_ORDER, ordered = TRUE)
+print(sim_eigen)
+real_eigens <- read_csv("../processed/cyclops/real_data/cyclops_EigengeneExp.csv", show_col_types=FALSE) |>
+    nrow()
+
 eigen_violin <- ggplot(sim_eigen, aes(method, num, color=method)) +
     geom_violin() +
     ylab("number of eigengenes") +
     scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="method") +
-    geom_hline(yintercept = 13, linetype = "dashed", color = "black")
+    geom_hline(yintercept = real_eigens, linetype = "dashed", color = "black")
 
 cyclops_plot <- circular_correlation_violin / 
     eigen_violin /

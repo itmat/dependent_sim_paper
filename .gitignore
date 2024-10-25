@@ -10,6 +10,7 @@ manuscript/*cache
 manuscript/paper_files
 manuscript/html
 manuscript/paper.html
+manuscript/docx
 .cache
 
 .Rhistory

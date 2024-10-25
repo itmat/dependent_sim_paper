@@ -1,26 +1,21 @@
 Bootstrap: docker
-From: julia:0.3.11
+From: julia:0.6
 
 %files
     containers/cyclops/runCYCLOPS.jl /runCYCLOPS.jl
 
 %environment
-    export JULIA_PKGDIR=/opt/julia/v0.3
+    export JULIA_PKGDIR=/opt/julia/v0.6
 
 %post
-    apt-get update && apt-get install -y git-all
-    git clone https://github.com/gangwug/Oslops.git /Oslops
+    curl -L https://github.com/ranafi/CYCLOPS/archive/refs/heads/master.tar.gz > master.tar.gz
+    tar -xzf master.tar.gz -C /
+    mv /CYCLOPS-master /CYCLOPS
 
     # Configure a directory to place Julia packages
     export JULIA_PKGDIR=/opt/julia
-    export PATH=/usr/local/julia/bin:$PATH
-    
-    # Get the package metadata from git using https because the Julia v0.3 Pkg manager
-    # uses a now-deprecated git:// option that timesout with github
-    mkdir /opt/julia
-    mkdir /opt/julia/v0.3
-    git clone https://github.com/JuliaLang/METADATA.jl.git /opt/julia/v0.3/METADATA
 
+    julia -e 'using Base.Pkg; Base.Pkg.init()'
     julia -e 'using Base.Pkg; Base.Pkg.add("ArgParse")'
     julia -e 'using Base.Pkg; Base.Pkg.add("StatsBase")'
     julia -e 'using Base.Pkg; Base.Pkg.add("MultivariateStats")'
