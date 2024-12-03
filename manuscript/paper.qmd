@@ -32,47 +32,113 @@ bibliography: references.bib
 Simulation of realistic omics data is a key input for benchmarking studies that help users obtain optimal computational pipelines.
 Omics data involves large numbers of measured features on each samples and these measures are generally correlated with each other.
 However, simulation too often ignores these correlations, perhaps due to the inconvenience and computational hurdles of doing so.
-We describe and implement three approaches based off decomposing the covariance matrix into a diagonal part and a low-rank part and using a Gaussian copula approach.
-These approaches are efficient at omics-scale problems.
-We demonstrate the importance of including correlation in two benchmarking applications.
+To alleviate this, we describe in detail three approaches for quickly generating omics-scale data with correlated measures which mimic real data sets.
+These approaches all are based on a Gaussian copula approach with a covariance matrix that decomposes into a diagonal part and a low-rank part.
+We use these approaches to demonstrate the importance of including correlation in two benchmarking applications.
 First, we show that variance of results from the popular DESeq2 method increases when dependence is included.
 Second, we demonstrate that a method, CYCLOPS, for inferring circadian time of collection from transcriptomics performs substantially worse or better under different dependence situations.
 We provide an R package, dependentsimr, that has efficient implementations of these methods and can generate dependent data with arbitrary distributions, including discrete (binary, ordered categorical, Poisson, negative binomial), continuous (normal), or with an empirical distribution.
 
 ## Introduction
 
-Omics data is in the $p \gg n$ regime where there are fewer samples than measurements per sample.
+Omics data typically has far fewer samples than measurements per sample.
 This creates dual challenges in generating realistic simulated data for the purposes of benchmarking.
 First, there isn’t enough data to be able to compute a dependence structure (e.g., a full-rank correlation matrix).
-Second, generating omics-scale data with a specified correlation matrix is slow due to the typical $O(p^3)$ nature of these algorithms.
+Second, generating omics-scale data with a specified correlation matrix is slow due to the typical $O(n^3)$ nature of these algorithms, where $n$ is the number of measurements per sample.
+Moreover, there is a lack of practical guidance on how to generate simulated data with realistic dependence.
 These often mean that simulators assume independence of the measurements, which does not reflect reality.
 
-Recently, we wrote guidelines for performing omics benchmarking [@Brooks2024] and encouraged authors to ensure that any simulated data includes realistic correlation and dependence of measurements within a sample.
-However, this highlighted that one reason dependence is often neglected is the relatively lack of guidance for how to achieve it and that existing solutions are cumbersome.
+Here, we give an introduction to the theory and practice of generating dependent data and describe three related solutions which all offer good performance and ease-of-use even for large omics-scale problems.
+This expands off a discussion we originally wrote as part of a larger discussion on best practices in omics benchmarking [@Brooks2024].
+Our goal here is to produce guidelines that show that generating correlated data does not have to be onerous and instead should be considered a baseline requirement when simulating data.
 
-Here, we give solutions to this problem by using a correlation matrix that decomposes into a diagonal part and a low-rank part to both approximate realistic dependencies in a real data set and generate simulated data mimicking the real data.
-Using a Gaussian copula approach (also referred to as NORTA, for "normal to anything" [@norta]), the marginal (univariate) distributions can have realistic forms.
+We present three methods that operate by inferring a covariance matrix that decomposes into a diagonal part and a low-rank part.
+Using a Gaussian copula [@Nelsen1998-nq] approach (also referred to as NORTA, for "normal to anything" [@norta]), the marginal (univariate) distributions can have realistic forms.
 These solutions operate by taking a real dataset and mimicking it.
-We implement this strategy as an R package which supports normal, Poisson, DESeq2-based (negative binomial with sample-specific size factors), and empirical (for ordinal data) marginal distributions.
-This makes it particularly suited to RNA-seq data but also widely applicable.
-Moreover, it supports multi-modal data such as for multi-omics.
+For ease of use, we implement this in an R package which supports normal, Poisson, DESeq2-based (negative binomial with sample-specific size factors), and empirical (for ordinal data) marginal distributions.
 
-We implement three different strategies for determining the diagonal and low-rank parts of the covariance matrix.
+We implemented three different strategies for determining the diagonal and low-rank parts of the covariance matrix.
 First, the 'PCA' method uses principal component analysis (PCA) and picks the low-rank part such that the simulated data has the same variance in the top $k$ PCA components of the reference dataset.
 Second, the 'spiked Wishart' method fits $k$ components such that simulations with the same number of samples as the reference dataset will have, on average, the same PCA component variances as the reference.
 Unlike 'PCA', these variances are computed with resepect to the simulated data's own PCA and not using the PCA weights of the reference dataset.
-Third, the 'corpcor' method uses the popular R library `corpcor`, which implements a James-Stein type shrinkage estimator for the covariance matrix as a linear interpolation of the sample covariance matrix and a diagonal matrix.
+Third, the 'corpcor' method uses the popular R library `corpcor` [@SchaferStrimmer2005; @OpgenRheinStrimmer2007], which implements a James-Stein type shrinkage estimator for the covariance matrix as a linear interpolation of the sample covariance matrix and a diagonal matrix.
 No method exactly captures the input data, indicating room for future research, but all improve upon the common approach of assuming independence.
 
-We show two applications which demonstrate the importance of including dependence of measurements in simulated data when benchmarking computational pipelines.
+We show two applications which demonstrate the effects of including dependence of measurements in simulated data when benchmarking computational pipelines.
 First, we simulate RNA-seq data with differential expression between two conditions.
 Using DESeq2 to determine the differentially expressed genes, we found that dependence had little impact on the accuracy of reported $p$-values but increased the variance of those estimates.
-Second, we simulated a time series of RNA-seq data points and used the CYCLOPS method to infer collection time from the RNA-seq data, without time labels.
-Surprisingly, we found that including dependence in the data set improved the performance of CYCLOPS.
+Second, we simulated a time series of RNA-seq data points and used the CYCLOPS method [@Anafi2017] to infer collection time from the RNA-seq data, without time labels.
+In some cases, inclusion of dependence significantly improved performance of CYCLOPS.
 
 ## Results
 
-### Comparison to Real Data
+Assume that we have a reference dataset $X$ given by an $p \times n$ data matrix of $p$ features measured in each of $n$ independent samples.
+We want to capture correlations between the $p$ features, which could represent gene expressions, protein abundances, or other measured values.
+We refer to these features as genes for simplicity.
+Our goal is to generate simulated data with the same $p$ genes, the same marginal distributions of each gene as in $X$ and realistic gene-gene dependence.
+
+### Multivariate normal distribution
+
+We first discuss the simplest case, where our data set is multivariate normally distributed.
+The distribution $N(\mu, \Sigma)$ is the multivariate normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
+Here $\mu$ is a $p \times 1$ column vector and $\Sigma$ is a $p \times p$ matrix.
+In order for this to work, $\Sigma$ must be symmetric and positive semi-definite, meaning that all of its eigenvalues are non-negative 
+This matrix is conceptually simple, since $\Sigma_{ij}$ gives the the covariance of $x_i$ and $x_j$ when $x \sym N(\mu, \Sigma)$.
+More specifically, this is the population covariance matrix of $N(\mu, \Sigma)$, which does not generally equal the sample covariance matrix.
+Indeed, if $X$ is $n$ samples from $N(\mu, \Sigma)$, then $\hat \Sigma := (X - \bar X) (X - \bar X)^T / (n - 1)$ is the sample covariance matrix where $\bar X$ is the average of the $n$ samples.
+For large $n$, $\hat \Sigma$ will closely approximate $\Sigma$, but we care primarily about the situation where $n$ is small.
+In particular, $\hat \Sigma$ is at most a rank $n - 1$ matrix while $\Sigma$ could be up to rank $p$.
+This means that $N(\mu, \hat \Sigma)$ and $N(\mu, \Sigma)$ are quite different distributions: every sample from $N(\mu, \hat Sigma)$ is contained in an $n-1$ dimensional plane.
+If $n$ is small, then this is very unlike real data, which typically is close to $p$ dimensional.
+
+The difficulty then is that we only know $\hat \Sigma$ from our reference data set, but we need to choose a $\Sigma$ with which we can simulate data and the obvious choice of $\hat \Sigma$ is inadequate.
+The most common choice is to assume $\Sigma$ is a diagonal matrix.
+This is the situation we want to avoid where the generated data is independent: $x_i$ and $x_j$ have zero covariance unless $i = j$.
+However, this has some nice properties, such as being simple and fast to simulate (just generate univariate normal data for each variable).
+
+We describe three alternative approaches in Methods of how to choose a $\Sigma$ that will produce data similar to the input data.
+All three of these rely on a specific form of $\Sigma$, namely that
+$$ \Sigma = D^2 + PP^T $$
+where $D$ is a $p \times p$ diagonal matrix and $P$ is $p \times k$ for some $k \ll p$.
+This is a combination of an independent part (the diagonal matrix) and a low-rank part ($P P^T$).
+The low-rank part is also simple to generate data for.
+If $x$ is a vector of $k$ independent univariate standard normal values, then $P x \sim N(0, P P^T)$.
+The choice of specific $D$ and $P$ matrices is more in-depth and we leave the details for the Methods section.
+We have three alternative means for doing so, which we refer to as the PCA, spiked Wishart, and corpcor methods.
+
+Lastly, we emphasize that multivariate normal distributions do not capture all, or even most, types of possible dependence.
+Indeed, we see this even in the 2-dimensional case where it is well known that correlation describes only a linear relationship between two variables while in reality they may have much more complex relations.
+In higher dimensions, the problem is only worse.
+So any method based off multivariate normal distributions are making large assumptions about distribution.
+However, it is necessary to make some assumption like this.
+In the next section, though, we see that "normal" part is actually not a large obstacle. 
+
+### Gaussian copula
+
+Building on the multivariate normal distribution, a popular approach to describe dependence in a high-dimensional settings is called the Gaussian copula approach.
+The idea of this approach is that by normalizing and later reversing the normalization, data that does not fit a normal distribution can still have its dependence structure described using a multivariate normal distribution.
+This allows the marginal (i.e., univariate) distributions of each genes to be specified separately from the dependence between genes.
+This operates first by normalizing each gene by fitting a distribution (such as a normal distribution, Poisson, negative binomial, or other form), and then applying the fit cumulative distribution function (CDF) to the observed values.
+Finally, those are fed to a standard normal distribution's inverse CDF to obtain values that are approximately normally distributed.
+These values are then used to compute a covariance matrix $\Sigma$ and the data is assumed to follow a multivariate normal distribution in $p$ dimensions with that covariance matrix.
+
+Here, we describe the approach using the form of covariance matrix $\Sigma = D^2 + PP^T$ as above.
+Once data is obtained $Z \sim N(0, \Sigma)$, then one can undo the normalization process to obtain data with the same marginal distributions as the fit marginal distributions but with dependence determined by $\Sigma$.
+We describe this in detail:
+
+1.  Fit marginal distributions to each feature in $X$ to determine CDFs $F_{i}$ for each feature.
+2.  Transform $X$ to normalized values by $Z_{ij} = \Phi^{-1}(F_{i}(X_{ij}))$ where $\Phi$ is the CDF of the standard normal distribution.
+3.  Compute $D$, $U$, $W$ matrices from $X$ by one of three methods (see Methods).
+4.  Generate $k$ i.i.d. standard normally distributed values $u$ and $p$ i.i.d standard normally distributed values $v$.
+5.  Set $Z' = UWu + D v$.
+6.  Output the vector $X'$ where $X'_i = F_i^{-1}(\Phi(Z'))$.
+
+The generated data $Z'$ has covariance matrix $\Sigma = D^2 + U W U^T = D^2 + P P^T$, where $P := U \sqrt{W}$.
+Moreover, we require that $\Sigma$ satisfies that $e_i \Sigma e_i^T$ is approximately 1.
+That guarantees that the output $X'$ has each entry with the same marginal distributions $F_i$ as was originally fit and inherits gene-gene dependence from $Z'$.
+This method is computationally efficient, taking hardly any more time or memory than simulations without dependence.
+
+### Comparison to real data
 
 ```{r}
 #| include: false
@@ -109,7 +175,7 @@ The PCA method puts a large amount of variance into the first two components (du
 compare_to_real_plot
 ```
 
-### DESeq2 Application
+### DESeq2 application
 
 We benchmarked DESeq2 [@Love2014], a popular differential expression analysis tool, using data sets simulated with dependence and ones simulated without dependence to compare its performances on both.
 DESeq2 presents an interesting case because several aspects of it assume independence of genes and so may be adversely affected by gene-gene dependence.
@@ -141,7 +207,7 @@ source("DE_plots.R")
 DESeq2_fdr_plot
 ```
 
-### CYCLOPS Application
+### CYCLOPS application
 
 We next used our simulation method to benchmark CYCLOPS [@Anafi2017], which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse liver time series data set GSE151565, which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point.
 We then use these to simulate 20 time series data sets for each of the independent, PCA, Wishart, and corpcor simulation methods.
@@ -171,43 +237,9 @@ cyclops_plot
 
 ## Methods
 
-Assume that we have a reference dataset $X$ given by an $p \times n$ data matrix of $p$ features measured in each of $n$ independent samples.
-We want to capture correlations between the $p$ features, which could represent gene expressions, protein abundances, or other measured values.
-We refer to these features as genes for simplicity.
-Our goal is to generate simulated data with the same $p$ genes, the same marginal distributions of each gene as in $X$ and realistic gene-gene dependence.
+Below, we describe the three methods for selecting the components of the covariance matrix $\Sigma := D + P P^T$.
 
-
-### Gaussian Copula
-
-All three methods are based off a well-known Gaussian copula approach.
-This operates first by normalizing each gene by fitting a distribution (such as a normal distribution, Poisson, negative binomial, or other form), and then applying the fit cumulative distribution function (CDF) to the observed values.
-Finally, those are fed to a standard normal distribution's inverse CDF to obtain values that are approximately normally distributed.
-These values are then used to compute a covariance matrix $\Sigma$ and the data is assumed to follow a multivariate normal distribution in $p$ dimensions with that covariance matrix.
-Note that the sample covariance matrix is a poor choice for this $\Sigma$.
-In general, the sample covariance matrix is at most rank $n$, and will be approximately rank $n-1$ due to the normalization procedure.
-This means that generated data would lie on an $n-1$ dimensional hyperplane, which we know is unrealistic.
-
-Instead, we want to estimate some other matrix of the form $\Sigma = D + PP^T$ where $D$ is $p \times p$ diagonal and $P$ is $p \times k$ for $k \ll p$.
-This means that $P P^T$ is low-rank.
-Conveniently, this form allows efficient simulation of multivariate normal data $N(0, \Sigma)$.
-Once data is obtained $Z \sim N(0, \Sigma)$, then one can undo the normalization process to obtain data with the same marginal distributions as the fit marginal distributions but with dependence determined by $\Sigma$.
-We describe this in detail below:
-
-1.  Fit marginal distributions to each feature in $X$ to determine CDFs $F_{i}$ for each feature.
-2.  Transform $X$ to normalized values by $Z_{ij} = \Phi^{-1}(F_{i}(X_{ij}))$ where $\Phi$ is the CDF of the standard normal distribution.
-3.  Compute $D$, $U$, $W$ matrices from $X$ by one of three methods (below).
-4.  Generate $k$ i.i.d. standard normally distributed values $u$ and $p$ i.i.d standard normally distributed values $v$.
-5.  Set $Z' = UWu + D v$.
-6.  Output the vector $X'$ where $X'_i = F_i^{-1}(\Phi(Z'))$.
-
-The generated data $Z'$ has covariance matrix $\Sigma = D^2 + U W U^T$.
-Moreover, we require that $\Sigma$ satisfies that $e_i \Sigma e_i^T$ is approximately 1.
-That guarantees that the output $X'$ has each entry with the same marginal distributions $F_i$ as was originally fit and inherits gene-gene dependence from $Z'$.
-
-This is a standard Gaussian copula approach tailored to our specific format of $\Sigma$.
-Most implementations of this approach instead rely upon performing a Cholesky decomposition of $\Sigma$, which requires significant time and memory resources for omics-scale problems with over tens of thousands of genes.
-
-###  PCA Method
+###  PCA method
 
 The first of our three methods attempts to match the top $k$ PCA components of the normalized reference dataset $Z$.
 Specifically, let $u_1, \ldots, u_k$ be the left singular vectors of $Z$ with $\lambda_1, \ldots, \lambda_k$ the corresponding top $k$ signular values.
@@ -223,7 +255,7 @@ Instead, we use the following:
 Steps 1 and 2 give that $u_i \Sigma u_i^T = \lambda_i$ for $i = 1, \ldots, k$.
 Step 4 ensures that $e_j \Sigma e_j^T = 1$ for $j = 1, \ldots, p$.
 
-### Spiked Wishart Method
+### Spiked Wishart method
 
 The second method also makes use of PCA but has a different objective.
 If $n$ samples are drawn from $N(0, \Sigma)$ then we want the variances of their PCA components to match those of the reference dataset.
@@ -251,7 +283,7 @@ Specifically, we do:
 4. Set $W$ diagonal with the entries $w_1, \ldots, w_k$.
 3. Set $D = cI$
 
-### Corpcor Method
+### Corpcor method
 
 The `corpcor` package [@SchaferStrimmer2005; @OpgenRheinStrimmer2007] computes a James-Stein type shrinkage estimator for the covariance matrix.
 For large $p$, this greatly improves the estimate of the covariance matrix by introducing a little bias towards zero correlations and equal variances of genes.
@@ -268,23 +300,31 @@ This algorithm is:
 
 ## Discussion
 
-We present `dependentsimr`, an R package that generates omics-scale data with realistic correlation.
-We demonstrate this package on RNA-seq data, using the DESeq2 method to fit negative binomial marginal distributions.
+We described the well-known Gaussian copula approach and recommended a specific form of covariance matrix which is well tailored to omics data simulation.
+We developed three methods using this form of covariance matrix which can be used to mimic a reference data set for simulation.
+All of these methods use a multivariate normal distribution as an intermediate step and therefore substantially restrict the kinds of dependence that can be simulated.
+However, when operating in a high-dimensional space some simplification is likely required.
+
+To encourage adoption of dependence in simulated omics data, we developed `dependentsimr`, an R package that generates omics-scale data with realistic correlation.
+This implementation is efficient and simple, requiring just two lines of code to fit a model to a reference data set and then simulate data from it.
+We demonstrated this package on RNA-seq data, using the DESeq2 method to fit negative binomial marginal distributions.
 However, this package is actually quite general and supports normal, Poisson, negative binomial, and arbitrary ordered discrete distributions using the empirical CDF.
 Moreover, it can support multi-modal data such as is increasingly common in multi-omics.
 
-We demonstrate the importance of including gene-gene dependence in simulated data by two application benchmarks.
-In the first, we demonstrate that DESeq2 results are substantially more variable when simulating with gene-gene dependence.
-In the second, we demonstrate that the performance of CYCLOPS in estimating circadian phases depends upon gene-gene dependence, with an unexpected result of better performance in the dependent case.
+We demonstrated the importance of including gene-gene dependence in simulated data by two application benchmarks.
+In the first, DESeq2 results were substantially more variable when simulating with gene-gene dependence.
+In the second, CYCLOPS performance in estimating circadian phases depends upon gene-gene dependence, was sensitive to dependence structure of the data.
 
-Our comparisons to a real dataset show that none of our three methods are able to exactly capture some aspects of the real dataset.
+Our comparisons to a real dataset show that none of our three methods are able to exactly capture all aspects of the real dataset.
 In particular, the gene-gene correlations were too high in the PCA method and too low in the spiked Wishart and corpcor methods.
-Surprisingly, spiked Wishart and corpcor methods improved in this metric only slightly compared to the simulations with independent genes.
-These observations demonstrate that there is room for future improvements over independent data in these techniques and possibly demonstrate that the datasets are too far from a multivariate normal distribution even after normalization. 
-Nonetheless, these methods represent significant improvements by other metrics and we recommend the inclusion of some dependence in nearly every simulated dataset.
-We highlight some alternatives that have been taken below.
+Surprisingly, the spiked Wishart and corpcor methods improved in this metric only slightly compared to the simulations with independent genes.
+These observations demonstrate that there is room for future improvements over independent data in these techniques, possibly incorporating more recent developments in copulae [@copulae@].
+Possibly, this could demonstrate the limitations of methods based on the multivariate normal distribution or of the low-rank approximation used by all three of our methods. 
+Nonetheless, these methods represent significant improvements by other metrics and we recommend the inclusion of some dependence in nearly every simulated omics dataset.
 
 ### Alternatives
+
+We highlight some alternative approaches and software packages that have been taken below.
 
 The R package [SPsimSeq](https://github.com/CenterForStatistics-UGent/SPsimSeq) [@Assefa2020] provides a dedicated RNA-seq and single-cell RNA-seq simulator using a Gaussian copula approach to simulate gene dependence.
 In contrast to this package, it uses WGCNA to determine the correlation matrix, which is a gene network approach.
@@ -307,4 +347,4 @@ All of these packages provide more flexibility in specifying dependence than our
 ## Data availability
 
 Source code for all simulations and figures in this plot is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
-All data used is available from GSE151923, GSE81142, GSE151565.
+All data used is available with accession numbers GSE151923, GSE81142, GSE151565.
