@@ -347,4 +347,5 @@ All of these packages provide more flexibility in specifying dependence than our
 ## Data availability
 
 Source code for all simulations and figures in this plot is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
+Source code for the `dependentsimr` package is available at [github.com/tgbrooks/dependent_sim](https://github.com/tgbrooks/dependent_sim/).
 All data used is available with accession numbers GSE151923, GSE81142, GSE151565.
