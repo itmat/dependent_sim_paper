@@ -68,6 +68,7 @@ simDE_analysis <- function(filename, samples) {
         rename(ENSEMBL_ID = row, qvalue = padj) |>
         mutate(Comparison = "case_vs_control") |> 
         arrange(pvalue, qvalue)
+    
         
     # create list of differentially expressed genes
     DEgenes <- 
@@ -84,6 +85,7 @@ simDE_analysis <- function(filename, samples) {
     filtered_results <- 
         deseq2_results |> 
         filter(qvalue < 0.1)
+    write_csv(filtered_results, paste0("processed/DE/", filename, "_DEG.csv"))
     
     # read true values for the case and control datasets
     case_true_vals <-
@@ -131,6 +133,9 @@ simDE_analysis <- function(filename, samples) {
 
 }
 
+## test GO analysis
+pca_DEG <- read_csv("processed/DE/Mouse.Cortex.Male.pca_DEG.csv")
+pca_DEG$ENSEMBL_ID
 
 # run DE analysis on the mouse data set for all four methods and get fdr values
 for (method in c("indep", "pca", "wishart", "corpcor")) {

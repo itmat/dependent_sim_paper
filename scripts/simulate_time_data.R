@@ -8,7 +8,7 @@ library(rlang)
 method <- snakemake@wildcards$method
 
 # use ZT0 of raw time series data to get dependence structure
-male_read_counts <- read.csv("processed/Liver_ZT0-counts.csv") |> 
+male_read_counts <- read.csv("processed/Cortex_ZT0-counts.csv") |> 
     column_to_rownames(var="raw_data.EnsemblID")
 
 # Get dependence structure
@@ -54,7 +54,7 @@ generate <- function(rs, seed) {
 male_sim <- generate(male_rs, .Random.seed)
 
 # read time point means
-time_point_means <- read.csv("processed/mean_per_time_Liver.csv") |> 
+time_point_means <- read.csv("processed/mean_per_time_Cortex.csv") |> 
     inner_join(tibble(EnsemblID = male_rs$rownames$data), by='EnsemblID')
 time_point_means$mean <- time_point_means[, -1] |> 
     mutate_all(as.numeric) |> 
@@ -82,11 +82,11 @@ for (i in (2 : (ncol(time_point_means)-1))) {
 
 time_data <- data_per_time |> 
     purrr::reduce(full_join, by="ENSEMBL_ID")
-write.csv(time_data, paste0("simulated_data/Liver_120_simulated_time_series_",method,".csv"), row.names = FALSE)
+write.csv(time_data, paste0("simulated_data/Cortex_120_simulated_time_series_",method,".csv"), row.names = FALSE)
 norm_time_data <- time_data
 read_depth <- apply(time_data[, -1], 2, sum)
 norm_time_data[, -1] <- as_tibble(as.matrix(time_data[, -1]) %*% diag(1000000/read_depth))
-write.csv(norm_time_data, paste0("simulated_data/Liver_120_normalized_simulated_time_series_",method,".csv"), row.names = FALSE)
+write.csv(norm_time_data, paste0("simulated_data/Cortex_120_normalized_simulated_time_series_",method,".csv"), row.names = FALSE)
 
 
 

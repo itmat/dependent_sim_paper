@@ -3,6 +3,7 @@ data/
 processed/
 results/
 simulated_data/
+notebook_data/
 venv/
 logs/
 plots/

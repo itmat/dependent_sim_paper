@@ -4,7 +4,7 @@ input_data_urls = {
     "GSE81142.counts.txt.gz": "https://s3.amazonaws.com/itmat.data/tom/dependent_sim_paper/GSE81142.counts.txt.gz",
     "GSE81142_family.soft.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE81nnn/GSE81142/soft/GSE81142_family.soft.gz",
     "BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz": "https://s3.amazonaws.com/itmat.data/BHTC_JTK_RESULTS/BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz",
-    "GSE151565_Liver-counts.csv.gz": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151565/suppl/GSE151565%5FLiver%2Dcounts%2Ecsv%2Egz",
+    "GSE151565_Cortex-counts.csv.gz": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151565/suppl/GSE151565%5FCortex%2Dcounts.csv.gz"
 }
 soft_metadata_attributes = {
   "GSE151923": {
@@ -27,7 +27,7 @@ rule all:
     input:
         "simulated_data/Mouse.Cortex.Male.pca.Control.txt",
         "simulated_data/Fly.WholeBody.Male.pca.Control.txt",
-        "simulated_data/Liver_120_simulated_time_series_pca.csv",
+        "simulated_data/Cortex_120_simulated_time_series_pca.csv",
         #"time_series_data/Mouse.Cortex.k=2.txt",
         "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
         expand("processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv",
@@ -121,12 +121,12 @@ rule sim_de:
 
 rule process_time_series:
     input:
-        "data/GSE151565_Liver-counts.csv.gz",
+        "data/GSE151565_Cortex-counts.csv.gz",
         "images/dependent_sim.sif",
     output:
-        "processed/mean_per_time_Liver.csv",
-        "processed/Liver_normalized_time_series_data.csv",
-        "processed/Liver_ZT0-counts.csv",
+        "processed/mean_per_time_Cortex.csv",
+        "processed/Cortex_normalized_time_series_data.csv",
+        "processed/Cortex_ZT0-counts.csv",
     container:
         "images/dependent_sim.sif",
     script:
@@ -134,11 +134,11 @@ rule process_time_series:
 
 rule simulate_time_series:
     input:
-        "processed/Liver_ZT0-counts.csv",
-        "processed/mean_per_time_Liver.csv",
+        "processed/Cortex_ZT0-counts.csv",
+        "processed/mean_per_time_Cortex.csv",
         "images/dependent_sim.sif",
     output:
-        expand("simulated_data/Liver_120_{datatype}_time_series_{{method}}.csv",
+        expand("simulated_data/Cortex_120_{datatype}_time_series_{{method}}.csv",
             datatype = ["simulated", "normalized_simulated"])
     resources:
         mem_mb = 6_000
@@ -157,11 +157,11 @@ rule make_cyclic_gene_list:
 
 rule make_cyclops_input:
     input:
-        expression = "simulated_data/Liver_120_normalized_simulated_time_series_{method}.csv"
+        expression = "simulated_data/Cortex_120_normalized_simulated_time_series_{method}.csv"
     output:
         expression = "processed/cyclops_input/batch={batch}.{method}.csv"
     params:
-        batch_size = 6
+        batch_size = 4
     script:
         "scripts/make_cyclops_input.py"
 
@@ -183,7 +183,7 @@ rule run_cyclops:
 
 rule run_cyclops_real_data:
     input:
-        expression = "processed/Liver_normalized_time_series_data.csv",
+        expression = "processed/Cortex_normalized_time_series_data.csv",
         seedfile = "processed/cyclic_gene_list.txt",
         sif = "images/cyclops.sif",
     output:

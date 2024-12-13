@@ -40,7 +40,7 @@ corrs <- tibble(indep = rep(0, 20), pca = rep(0, 20), wishart = rep(0, 20), corp
 for (method in c("indep", "pca", "wishart", "corpcor")) {
     for (j in (0:19)) {
         phaselist <- read_csv(paste0("../processed/cyclops/",method,"/batch=", j, "/cyclops_estimated_phaselist.csv"))
-        for (i in (1:48)) {
+        for (i in (1:32)) {
             phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
                 substring(3)
         }
@@ -62,8 +62,8 @@ circular_correlation_violin
 # rainbow plots visualizing true_counts_counts_counts and estimated phases
 phaseplots <- list()
 for (method in c("indep", "pca", "wishart", "corpcor")) {
-    phaselist <- read_csv(paste0("../processed/cyclops/",method,"/batch=", 8, "/cyclops_estimated_phaselist.csv"))
-    for (i in (1:48)) {
+    phaselist <- read_csv(paste0("../processed/cyclops/",method,"/batch=", 5, "/cyclops_estimated_phaselist.csv"))
+    for (i in (1:32)) {
         phaselist[i, 'ID'] <- strsplit(as.character(phaselist[i, 'ID']), "_")[[1]][1] |> 
             substring(3)
     }

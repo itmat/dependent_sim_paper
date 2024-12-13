@@ -82,13 +82,13 @@ Our goal is to generate simulated data with the same $p$ genes, the same margina
 We first discuss the simplest case, where our data set is multivariate normally distributed.
 The distribution $N(\mu, \Sigma)$ is the multivariate normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
 Here $\mu$ is a $p \times 1$ column vector and $\Sigma$ is a $p \times p$ matrix.
-In order for this to work, $\Sigma$ must be symmetric and positive semi-definite, meaning that all of its eigenvalues are non-negative 
-This matrix is conceptually simple, since $\Sigma_{ij}$ gives the the covariance of $x_i$ and $x_j$ when $x \sym N(\mu, \Sigma)$.
+In order for this to work, $\Sigma$ must be symmetric and positive semi-definite, meaning that all of its eigenvalues are non-negative. 
+This matrix is conceptually simple, since $\Sigma_{ij}$ gives the the covariance of $x_i$ and $x_j$ when $x \sim N(\mu, \Sigma)$.
 More specifically, this is the population covariance matrix of $N(\mu, \Sigma)$, which does not generally equal the sample covariance matrix.
 Indeed, if $X$ is $n$ samples from $N(\mu, \Sigma)$, then $\hat \Sigma := (X - \bar X) (X - \bar X)^T / (n - 1)$ is the sample covariance matrix where $\bar X$ is the average of the $n$ samples.
 For large $n$, $\hat \Sigma$ will closely approximate $\Sigma$, but we care primarily about the situation where $n$ is small.
 In particular, $\hat \Sigma$ is at most a rank $n - 1$ matrix while $\Sigma$ could be up to rank $p$.
-This means that $N(\mu, \hat \Sigma)$ and $N(\mu, \Sigma)$ are quite different distributions: every sample from $N(\mu, \hat Sigma)$ is contained in an $n-1$ dimensional plane.
+This means that $N(\mu, \hat \Sigma)$ and $N(\mu, \Sigma)$ are quite different distributions: every sample from $N(\mu, \hat \Sigma)$ is contained in an $n-1$ dimensional plane.
 If $n$ is small, then this is very unlike real data, which typically is close to $p$ dimensional.
 
 The difficulty then is that we only know $\hat \Sigma$ from our reference data set, but we need to choose a $\Sigma$ with which we can simulate data and the obvious choice of $\hat \Sigma$ is inadequate.
@@ -209,18 +209,18 @@ DESeq2_fdr_plot
 
 ### CYCLOPS application
 
-We next used our simulation method to benchmark CYCLOPS [@Anafi2017], which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse liver time series data set GSE151565, which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point.
+We next used our simulation method to benchmark CYCLOPS [@Anafi2017], which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse cortex time series data set GSE151565, which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point.
 We then use these to simulate 20 time series data sets for each of the independent, PCA, Wishart, and corpcor simulation methods.
 
-We ran CYCLOPS on each data set with a list of cyclic mouse liver genes (from [@Zhang2014], JTK p-value $<0.05$), which yielded an estimated relative time for each sample.
+We ran CYCLOPS on each data set with a list of cyclic mouse genes (from [@Zhang2014], JTK p-value $<0.05$), which yielded an estimated relative time for each sample.
 We evaluated CYCLOPS' performance compared to true circadian time using the circular correlation [@correlation_coeff], defined as follows:
 $$\rho = \frac{\sum_{1\leq i<j\leq n}\sin(X_i-X_j) \sin(Y_i-Y_j)}{(\sum_{1\leq i<j\leq n} \sin(X_i-X_j)^2)^{1/2}(\sum_{1\leq i<j\leq n} \sin(Y_i-Y_j)^2)^{1/2}},$$
 where $n$ is the number of samples, $X_i$ and $Y_i$ are the true time and CYCLOPS-estimated time, respectively, for the $i$-th sample.
 $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates accurate predictions by CYCLOPS.
 
 We find that CYCLOPS performance depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS), indicating that the presence of gene-gene dependence is highly impactful on CYCLOPS' performance.
-Overall, CYCLOPS performance is poor in the independent data and improved in both PCA and corpcor data, but surprisingly the Wishart data also shows poor performance.
-Since by default CYCLOPS performs dimension reduction to the number of dimensions needed to capture 99% of the variance, this performance difference is likely due to the number of eigengenes needed by CYCLOPS to meet the variance threshold (@fig-CYCLOPS b).
+Overall, CYCLOPS performance is worse in the corpcor and Wishart data than in the independent data, but surprisingly the pca data shows better performance.
+Since by default CYCLOPS performs dimension reduction to the number of dimensions needed to capture 80% of the variance, this performance difference is likely partially due to the number of eigengenes needed by CYCLOPS to meet the variance threshold (@fig-CYCLOPS b).
 
 ```{r}
 #| include: false
@@ -229,7 +229,7 @@ source("circular_correlation.R")
 
 ```{r}
 #| label: fig-CYCLOPS
-#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse liver data set (GSE151565). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with the four methods. (b) Violin plot comparing the number of eigengenes used by CYCLOPS between the four methods; the red dotted line indicates the number of eigengenes used by CYCLOPS on the real data (13). (c-f) Examples of CYCLOPS estimated phases on the simulated data sets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse cortex data set (GSE151565). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with the four methods. (b) Violin plot comparing the number of eigengenes used by CYCLOPS between the four methods; the red dotted line indicates the number of eigengenes used by CYCLOPS on the real data (5). (c-f) Examples of CYCLOPS estimated phases on the simulated data sets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
 #| fig-width: 12
 #| fig-height: 8
 cyclops_plot

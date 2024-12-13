@@ -4,7 +4,7 @@ library(dplyr)
 library(tidyr)
 library(tidyverse)
 
-raw_data <- read_csv("data/GSE151565_Liver-counts.csv.gz")
+raw_data <- read_csv("data/GSE151565_Cortex-counts.csv.gz")
 
 normalized_data <- raw_data
 
@@ -46,12 +46,12 @@ mean_df <- mean_per_time |>
     purrr::reduce(full_join, by="normalized_data$EnsemblID")
 colnames(mean_df) <- c("EnsemblID", 'ZT0', 'ZT3', 'ZT6', 'ZT9',
                               'ZT12', 'ZT15', 'ZT18', 'ZT21')
-write_csv(mean_df, "processed/mean_per_time_Liver.csv")
+write_csv(mean_df, "processed/mean_per_time_Cortex.csv")
 
 processed_data <- data_per_time |> 
     reduce(full_join, by="normalized_data$EnsemblID")
-write_csv(processed_data, "processed/Liver_normalized_time_series_data.csv")
+write_csv(processed_data, "processed/Cortex_normalized_time_series_data.csv")
 
 data0 <- cbind(raw_data$EnsemblID, raw_data[, time_points==paste0('ZT',0)])
 data0 <- data0[-1, ]
-write_csv(data0, "processed/Liver_ZT0-counts.csv")
+write_csv(data0, "processed/Cortex_ZT0-counts.csv")
