@@ -133,10 +133,6 @@ simDE_analysis <- function(filename, samples) {
 
 }
 
-## test GO analysis
-pca_DEG <- read_csv("processed/DE/Mouse.Cortex.Male.pca_DEG.csv")
-pca_DEG$ENSEMBL_ID
-
 # run DE analysis on the mouse data set for all four methods and get fdr values
 for (method in c("indep", "pca", "wishart", "corpcor")) {
     fdr_lists = list()
