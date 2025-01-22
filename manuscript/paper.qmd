@@ -26,7 +26,6 @@ format:
     toc-expand: true
 bibliography: references.bib
 ---
-
 ## Abstract
 
 Simulation of realistic omics data is a key input for benchmarking studies that help users obtain optimal computational pipelines.
@@ -237,7 +236,7 @@ cyclops_plot
 
 ## Methods
 
-Below, we describe the three methods for selecting the components of the covariance matrix $\Sigma := D + P P^T$.
+Below, we describe the three methods for selecting the components of the covariance matrix $\Sigma := D^2 + P P^T$.
 
 ###  PCA method
 
@@ -268,8 +267,8 @@ The spiked Wishart is the special case where $\Sigma$ has $k$ arbitrary eigenval
 Note that the singular values of $Y$ are the square roots of the eigenvalues of its sample covariance matrix.
 While our case has $\Sigma$ non-diagonal, $\Sigma$ may be diagonalized by orthogonal rotations due the sepctral theorem, and orthogonal rotations do not change the singular values of $Y$.
 Therefore, the distribution of singular values is not affected by the assumption that $\Sigma$ is diagonal.
-Moreover, for the form $\Sigma = D + U W U^T$ where $p$ is very large, each column of $U$ is typically very close to orthogonal to any $e_i$, a standard basis vector.
-Therefore, when $D = cI$ for some constant $c$, we can approximate $\Sigma$ as having $k$ arbitrary eigenvalues from $W$ and $n$ remaining eigenvalues all equal to $c$ corresponding to $D$.
+Moreover, for the form $\Sigma = D^2 + U W U^T$ where $p$ is very large, each column of $U$ is typically very close to orthogonal to any $e_i$, a standard basis vector.
+Therefore, when $D = c^2I$ for some constant $c$, we can approximate $\Sigma$ as having $k$ arbitrary eigenvalues from $W$ and $n$ remaining eigenvalues all equal to $c$ corresponding to $D$.
 This is a spiked Wishart distribution.
 
 However, the spiked Wishart distribution also has no known analytic solution for the distribution of its eigenvalues either.
@@ -279,7 +278,7 @@ Since the dataset has been normalized, $c$ will be close to one and $e_i \Sigma 
 Specifically, we do:
 
 1. Set $U$ to be the $p \times k$ matrix with columns $u_i$, the left singular vectors of $Z$.
-2. Compute $w_1, \ldots, w_k$ and $c$ by stochastic gradient descent minimizing $\sum_{i} (E[\lambda'_i] - \lambda_i)^2$ for $\Sigma$ diagonal with entries $w_1, \ldots, w_k, c, \ldots, c$.
+2. Compute $w_1, \ldots, w_k$ and $c$ by stochastic gradient descent minimizing $\sum_{i} (E[\lambda'_i] - \lambda_i)^2$ for $\Sigma$ diagonal with entries $w_1, \ldots, w_k, c^2, \ldots, c^2$ [@wishart].
 4. Set $W$ diagonal with the entries $w_1, \ldots, w_k$.
 3. Set $D = cI$
 
@@ -289,7 +288,7 @@ The `corpcor` package [@SchaferStrimmer2005; @OpgenRheinStrimmer2007] computes a
 For large $p$, this greatly improves the estimate of the covariance matrix by introducing a little bias towards zero correlations and equal variances of genes.
 It computes optimal values of $\lambda_1$, and $\lambda_2$, its two regularization coefficients.
 It then uses $\lambda_1$ to linearly interpolate the sample covariance matrix towards the identity matrix $I$ and $\lambda_2$ to interpolate the vector of variances towards the median variance value.
-Since the sample covariance matrix is rank at most $n$, we again obtain a matrix of the form $\Sigma = D + UWU^T$.
+Since the sample covariance matrix is rank at most $n$, we again obtain a matrix of the form $\Sigma = D^2 + UWU^T$.
 
 This algorithm is:
 
@@ -349,3 +348,10 @@ All of these packages provide more flexibility in specifying dependence than our
 Source code for all simulations and figures in this plot is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
 Source code for the `dependentsimr` package is available at [github.com/tgbrooks/dependent_sim](https://github.com/tgbrooks/dependent_sim/).
 All data used is available with accession numbers GSE151923, GSE81142, GSE151565.
+
+## Funding statement and competing interests
+
+TB and GG received funding support from the National Center for Advancing Translational Sciences Grant (5UL1TR000003).
+The funders had no role in this research, the decision to publish, or the preparation of this manuscript.
+
+The authors declare no competing interests.
