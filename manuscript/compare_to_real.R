@@ -13,8 +13,8 @@ set.seed(55)
 
 # CONFIGURATION
 HIGH_EXPR_CUTOFF <- 300
-TYPE_ORDER <- c("real", "indep", "pca", "wishart", "corpcor")
-TYPE_COLORS <- c("black", RColorBrewer::brewer.pal(length(TYPE_ORDER)-1, "Dark2"))
+METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor")
+METHOD_COLORS <- c("black", RColorBrewer::brewer.pal(length(METHOD_ORDER)-1, "Dark2"))
 
 # Load the real data ---------------------------------
 raw <- read_tsv("../data/GSE151923_metaReadCount_ensembl.txt.gz") |>
@@ -86,7 +86,7 @@ projected_indep_draws <- predict(pca, t(scaled_indep_draws[!constant_rows, ]))
 both_data <- data.frame(list(
     PC1 = c(projected_read_data[1:12,"PC1"], projected_draws[1:12,"PC1"], projected_corpcor[1:12,"PC1"], projected_wishart[1:12,"PC1"], projected_indep_draws[1:12,"PC1"]),
     PC2 = c(projected_read_data[1:12,"PC2"], projected_draws[1:12,"PC2"], projected_corpcor[1:12,"PC2"], projected_wishart[1:12,"PC2"], projected_indep_draws[1:12,"PC2"]),
-    type = c(
+    method = c(
         rep("real", 12),
         rep("pca", 12),
         rep("corpcor", 12),
@@ -94,11 +94,11 @@ both_data <- data.frame(list(
         rep("indep", 12)
     )
 )) %>%
-  mutate(type = factor(type, levels=TYPE_ORDER, ordered=TRUE))
-#both_data$type <- factor(both_data$type, levels=c("real", "dependent sim", "independent sim"))
-g3<-ggplot(data = both_data, aes(x=PC1, y=PC2,color=type)) +
+  mutate(method = factor(method, levels=METHOD_ORDER, ordered=TRUE))
+#both_data$method <- factor(both_data$method, levels=c("real", "dependent sim", "independent sim"))
+g3<-ggplot(data = both_data, aes(x=PC1, y=PC2,color=method)) +
    geom_point() +
-  scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="type")
+  scale_color_manual(values = METHOD_COLORS, breaks = METHOD_ORDER, name="method")
 
 # Plot gene-gene correlation ---------------------------
 high_expr_rows <- which(apply(read_counts, 1, mean) > HIGH_EXPR_CUTOFF)
@@ -128,11 +128,11 @@ for (i in 1:100) {
   )
 }
 corr_data <- do.call(rbind, corr_data)
-corr_data_long <- corr_data |> pivot_longer(everything(), names_to="type", values_to="corr") %>%
-  mutate(type=factor(type, levels=TYPE_ORDER, ordered=TRUE))
+corr_data_long <- corr_data |> pivot_longer(everything(), names_to="method", values_to="corr") %>%
+  mutate(method=factor(method, levels=METHOD_ORDER, ordered=TRUE))
 g4 <- ggplot(data = corr_data_long) +
-  geom_density(aes(x = corr, color=type), linewidth=1) +
-  scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="type")
+  geom_density(aes(x = corr, color=method), linewidth=1) +
+  scale_color_manual(values = METHOD_COLORS, breaks = METHOD_ORDER, name="method")
 
 
 # Compare SVD with and without dependence ----------------
@@ -141,7 +141,7 @@ PCA <- function(data) {
   return(prcomp(t(data[!constant_rows,]), rank.=2, scale.=TRUE))
 }
 pca_sdevs <- tibble(
-  type = "real",
+  method = "real",
   PC = 1:12,
   sdev = PCA(scaled_read_data)$sdev,
 )
@@ -149,34 +149,34 @@ for (i in 0:7) {
   pca_sdevs <- rbind(
     pca_sdevs,
     tibble(
-      type = "pca",
+      method = "pca",
       PC = 1:12,
       sdev = PCA(scaled_draws[,(1+12*i):(12*(i+1))])$sdev,
     ),
     tibble(
-      type = "corpcor",
+      method = "corpcor",
       PC = 1:12,
       sdev = PCA(scaled_draws_corpcor[,(1+12*i):(12*(i+1))])$sdev,
     ),
     tibble(
-      type = "wishart",
+      method = "wishart",
       PC = 1:12,
       sdev = PCA(scaled_draws_wishart[,(1+12*i):(12*(i+1))])$sdev,
     ),
     tibble(
-      type = "indep",
+      method = "indep",
       PC = 1:12,
       sdev = PCA(scaled_indep_draws[,(1+12*i):(12*(i+1))])$sdev,
     ),
     deparse.level=1
   )
 }
-pca_sdevs$type <- factor(pca_sdevs$type, levels=TYPE_ORDER, ordered=TRUE)
+pca_sdevs$method <- factor(pca_sdevs$method, levels=METHOD_ORDER, ordered=TRUE)
 g5 <- ggplot() +
   facet_wrap(facets=vars(PC), labeller=label_both, ncol=6) +
-  geom_hline(data=pca_sdevs |> filter(PC < 12, type == "real"), aes(yintercept=sdev, color="real"), linewidth=1) +
-  geom_boxplot(data=pca_sdevs |> filter(PC < 12, type != "real"), aes(x=type, y=sdev, color=type)) +
-  scale_color_manual(values=TYPE_COLORS, breaks=TYPE_ORDER, name="type") +
+  geom_hline(data=pca_sdevs |> filter(PC < 12, method == "real"), aes(yintercept=sdev, color="real"), linewidth=1) +
+  geom_boxplot(data=pca_sdevs |> filter(PC < 12, method != "real"), aes(x=method, y=sdev, color=method)) +
+  scale_color_manual(values=METHOD_COLORS, breaks=METHOD_ORDER, name="method") +
   theme(axis.text.x = element_text(angle=90))
 
 compare_to_real_plot <- (g1 | g2) / (g3 | g4) / (g5) + plot_annotation(tag_levels="a")

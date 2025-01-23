@@ -35,7 +35,7 @@ To alleviate this, we describe in detail three approaches for quickly generating
 These approaches all are based on a Gaussian copula approach with a covariance matrix that decomposes into a diagonal part and a low-rank part.
 We use these approaches to demonstrate the importance of including correlation in two benchmarking applications.
 First, we show that variance of results from the popular DESeq2 method increases when dependence is included.
-Second, we demonstrate that a method, CYCLOPS, for inferring circadian time of collection from transcriptomics performs substantially worse or better under different dependence situations.
+Second, we demonstrate that CYCLOPS, a method for inferring circadian time of collection from transcriptomics, improves in performance when given gene-gene dependencies in some circumstances.
 We provide an R package, dependentsimr, that has efficient implementations of these methods and can generate dependent data with arbitrary distributions, including discrete (binary, ordered categorical, Poisson, negative binomial), continuous (normal), or with an empirical distribution.
 
 ## Introduction
@@ -67,7 +67,7 @@ We show two applications which demonstrate the effects of including dependence o
 First, we simulate RNA-seq data with differential expression between two conditions.
 Using DESeq2 to determine the differentially expressed genes, we found that dependence had little impact on the accuracy of reported $p$-values but increased the variance of those estimates.
 Second, we simulated a time series of RNA-seq data points and used the CYCLOPS method [@Anafi2017] to infer collection time from the RNA-seq data, without time labels.
-In some cases, inclusion of dependence significantly improved performance of CYCLOPS.
+Depending upon settings used, performance of CYCLOPS dependent substantially on the dependence structure of the data, and surprisingly showed worst performance when given data with independent genes.
 
 ## Results
 
@@ -208,8 +208,10 @@ DESeq2_fdr_plot
 
 ### CYCLOPS application
 
-We next used our simulation method to benchmark CYCLOPS [@Anafi2017], which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures. We use a mouse cortex time series data set GSE151565, which contains a total of 77 samples every 3 hours, for 36 hours. We compute the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples, and compute the means of gene expressions at each time point.
-We then use these to simulate 20 time series data sets for each of the independent, PCA, Wishart, and corpcor simulation methods.
+We next used our simulation method to benchmark CYCLOPS [@Anafi2017], which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures.
+We chose a mouse cortex time series data set GSE151565, which contains a total of 77 samples every 3 hours, for 36 hours.
+We computed the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples and computed the means of gene expressions at each time point.
+We then used these to simulate 20 time series data sets for each of the independent, PCA, Wishart, and corpcor simulation methods.
 
 We ran CYCLOPS on each data set with a list of cyclic mouse genes (from [@Zhang2014], JTK p-value $<0.05$), which yielded an estimated relative time for each sample.
 We evaluated CYCLOPS' performance compared to true circadian time using the circular correlation [@correlation_coeff], defined as follows:
@@ -217,9 +219,12 @@ $$\rho = \frac{\sum_{1\leq i<j\leq n}\sin(X_i-X_j) \sin(Y_i-Y_j)}{(\sum_{1\leq i
 where $n$ is the number of samples, $X_i$ and $Y_i$ are the true time and CYCLOPS-estimated time, respectively, for the $i$-th sample.
 $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates accurate predictions by CYCLOPS.
 
-We find that CYCLOPS performance depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS), indicating that the presence of gene-gene dependence is highly impactful on CYCLOPS' performance.
-Overall, CYCLOPS performance is worse in the corpcor and Wishart data than in the independent data, but surprisingly the pca data shows better performance.
-Since by default CYCLOPS performs dimension reduction to the number of dimensions needed to capture 80% of the variance, this performance difference is likely partially due to the number of eigengenes needed by CYCLOPS to meet the variance threshold (@fig-CYCLOPS b).
+By default, CYCLOPS performs dimension reduction so that each dimension (called an "eigengene") contains at least 3% of the total variance.
+We found that CYCLOPS performance depended significantly on this parameter, with the default producing good performance across all simulations.
+However, when dropping CYCLOPS to require just 2% variance in each eigengene, we found that its performance depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS a).
+At that setting, CYCLOPS performance is much higher in the PCA method and moderately improved in Wishart method, compared to the independent method. 
+This difference is likely driven by the difference in the number of eigengenes used (@fig-CYCLOPS b), which is a measure of how much dependence is present in the data set.
+This demonstrates that the correlational structure of the transcriptome can have a major impact on performance.
 
 ```{r}
 #| include: false
@@ -228,7 +233,7 @@ source("circular_correlation.R")
 
 ```{r}
 #| label: fig-CYCLOPS
-#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse cortex data set (GSE151565). (a) Violin plot comparing absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets with the four methods. (b) Violin plot comparing the number of eigengenes used by CYCLOPS between the four methods; the red dotted line indicates the number of eigengenes used by CYCLOPS on the real data (5). (c-f) Examples of CYCLOPS estimated phases on the simulated data sets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-cap: "Performance of CYCLOPS on simulated time series data sets based on mouse cortex data set (GSE151565), using eigengenes of at least 2% variance. (a) Absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated data sets. (b) The number of eigengenes used by CYCLOPS; the dotted line indicates the number of eigengenes used by CYCLOPS on the real data (5). (c-f) Examples of CYCLOPS estimated phases on the simulated data sets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
 #| fig-width: 12
 #| fig-height: 8
 cyclops_plot
@@ -317,7 +322,7 @@ In the second, CYCLOPS performance in estimating circadian phases depends upon g
 Our comparisons to a real dataset show that none of our three methods are able to exactly capture all aspects of the real dataset.
 In particular, the gene-gene correlations were too high in the PCA method and too low in the spiked Wishart and corpcor methods.
 Surprisingly, the spiked Wishart and corpcor methods improved in this metric only slightly compared to the simulations with independent genes.
-These observations demonstrate that there is room for future improvements over independent data in these techniques, possibly incorporating more recent developments in copulae [@copulae@].
+These observations demonstrate that there is room for future improvements over independent data in these techniques, possibly incorporating more recent developments in copulae [@copulae].
 Possibly, this could demonstrate the limitations of methods based on the multivariate normal distribution or of the low-rank approximation used by all three of our methods. 
 Nonetheless, these methods represent significant improvements by other metrics and we recommend the inclusion of some dependence in nearly every simulated omics dataset.
 
@@ -351,6 +356,7 @@ All data used is available with accession numbers GSE151923, GSE81142, GSE151565
 
 ## Funding statement and competing interests
 
+JY received funding from National Institute of Neurological Disorders and Stroke (5R01NS048471).
 TB and GG received funding support from the National Center for Advancing Translational Sciences Grant (5UL1TR000003).
 The funders had no role in this research, the decision to publish, or the preparation of this manuscript.
 
