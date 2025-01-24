@@ -1,15 +1,53 @@
 ## Setup
 
-Install the required packages, and choose a simulation method (one of "indep", "pca", "corpcor" and "wishart").
+Install the required dependencies if not already installed:
+```{r}
+# The simulator
+if (!requireNamespace("remotes", quietly = TRUE))
+    install.packages("remotes")
+if (!requireNamespace("dependentsimr", quietly = TRUE))
+    remotes::install_github("tgbrooks/dependentsimr")
 
+# DESeq2 - optional dependency only needed if doing RNA-seq data sets
+# Needed for type = "DESeq2"
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+if (!requireNamespace("DESeq2", quietly = TRUE))
+    BiocManager::install("DESeq2")
+
+# Two more dependencies that are used in some simulation modes
+# Needed for method = "corpcor"
+if (!requireNamespace("corpcor", quietly)) 
+    install.packages("corpcor")
+
+# Needed for method = "spiked Wishart"
+if (!requireNamespace("sparsesvd"))
+    install.packages("sparsesvd")
+
+# Extras needed for this vignette
+if (!requireNamespace("tidyverse", quietly = TRUE))
+    install.packages("tidyverse")
+```
+
+Load the libraries:
 ```{r}
 library(dependentsimr)
 library(dplyr)
 library(tibble)
 library(DESeq2)
-
-method <- 'pca'
 ```
+
+Set a seed for reproducibility.
+```{r}
+set.seed(0)
+```
+
+## Load data
+
+Simulations with `dependentsimr` start with a real data set that should be mimicked.
+This data can be almost any shape, including continuous, or discrete.
+Here, we will simulate RNA-seq, which has discrete counts that we handle with a special "DESeq2" model.
+Other data types can use normal, Poisson, or empirical (which uses only the values present in the data set) types, or even a combination of these.
 
 Read in metadata containing sample names, sample IDs and sex.
 ```{r}
@@ -55,99 +93,108 @@ male_read_counts <- read_counts[,sex == 'male']
 
 ## Get Dependence Structure
 
-For the given simulation method, get the dependence structure from the real data set.
+The first step is to compute a 'random structure' for the data, which encodes how the variables (genes, in this case) in the data set are dependent upon each other.
+This computes a covariance matrix which captures the dependence between genes, however, that matrix is not the same as the usual sample covariance matrix.
+It also computes the shape (such as mean and variance) of each variable individually.
 
+There are three implemented methods ("pca", "spiked Wishart", and "corpcor") with different characteristics.
+We demonstrate here each.
+
+First, the "pca" method takes a `rank` and includes only gene-gene dependence up to that many dimensions.
+Typically small values (2 or 3, for example) would be used for `rank`, similar to when performing PCA, unless a large number of input samples are available.
+Note that we put our `read_counts` data into a `list()`.
+This is done since `get_random_structure` also supports multiple data sets of different 'modes' (for example, proteomics and transcriptomics done on the same samples).
+We only have one 'mode' that we give the arbitrary name of `data`.
 ```{r}
 
-# Produce simulated data
-if (method == "pca") {
-    set.seed(1)
-    # Simulate with the PCA method
-    rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, types="DESeq2")
-} else if (method == "corpcor") {
-    set.seed(2)
-    # Simulate with the corpcor method
-    rs <- get_random_structure(list(data=male_read_counts), method="corpcor", types="DESeq2")
-} else if (method == "wishart") {
-    set.seed(3)
-    # Simulate with the spiked Wishart method
-    rs <- get_random_structure(list(data=male_read_counts), rank=11, method="spiked Wishart", types="DESeq2")
-} else if (method == "indep") {
-    set.seed(4)
-    # Simulate without any dependence
-    dep_rs <- get_random_structure(list(data=male_read_counts), method="pca", rank=2, type="DESeq2")
-    rs <- remove_dependence(dep_rs)
-}
+rs_pca <- get_random_structure(list(data=read_counts), method="pca", rank=2, types="DESeq2")
 ```
 
+Second, the spiked Wishart method also takes a `rank` value but uses it differently.
+Typically, this will be larger, up to the total number of samples minus one, which is what we use here.
+For very large sample counts, `rank` might need to be capped well below the number of samples for computational efficiency reasons.
+```{r}
+rs_wishart <- get_random_structure(list(data=male_read_counts), rank=11, method="spiked Wishart", types="DESeq2")
+```
 
-Get the read depth of samples in the real data set, and generate library sizes of the simulated data sets (5 data sets each with 20 samples).
+Third, a method based off the `corpcor` package is implemented.
+It takes no parameters but often underestimates the amount of gene-gene dependence in the data.
+```{r}
+rs_corpcor <- get_random_structure(list(data=male_read_counts), method="corpcor", types="DESeq2")
+```
+
+Lastly, we could generate data without gene-gene dependence for comparison by removing the dependence from any of our random structures.
+```{r}
+rs_indep <- remove_dependence(rs_pca)
+```
+
+## Generate Data
+
+Real RNA-seq data sets typically have variation between samples in the total number of reads per sample.
+Here, we just copy the total number of reads from the real data set to get realistic values.
+A `library_size` of 1 corresponds to the average read depth of the data used to generate the random structure.
+This step is only needed when generating RNA-seq data with `type = "DESeq2"`.
+
 ```{r}
 actual_library_sizes <- male_read_counts |> apply(2, sum)
 
-N_SAMPLES <- 100
+N_SAMPLES <- 6
 library_sizes <- sample(actual_library_sizes / mean(actual_library_sizes), size=N_SAMPLES, replace=TRUE)
 ```
 
-## Simulate Control Data
+### Simulate Control Data
 
-Generate and save data+metadata (true values) from a specific random structure
+Now we generate some 'control' samples, which have the same expression levels (as well as gene-gene dependence) as was estimated from the original data set.
+We'll use `rs_pca` that we generated above for example, but any of the methods could be used.
 ```{r}
-generate <- function(rs, name) {
-  sim <- draw_from_multivariate_corr(rs, n_samples=N_SAMPLES, size_factors=library_sizes)$data
-  colnames(sim) <- paste("sample", 1:ncol(sim), sep='')
-
-sim |>
-    data.frame() |>
-    rownames_to_column("ENSEMBL_ID") |>
-    write.table(file=paste0("/home/jianingy/dependent_sim/dependent_sim_paper/notebook_data/", name, ".txt"), sep="\t", row.names=FALSE)
-
-  # metadata
-  truth <- data.frame(
-    gene_id = rownames(sim),
-    mean = rs$marginals$data$q,
-    disperion = rs$marginals$data$dispersion
-  )
-  truth[is.na(truth$mean), 2] <- 0 # NA mean is 0
-  
-  return(sim)
-}
-
-male_sim <- generate(rs, name=paste0("Mouse.Cortex.Male.",method,".Control"))
+control_sim_data <- draw_from_multivariate_corr(rs_pca, n_samples=N_SAMPLES, size_factors=library_sizes)$data
 ```
+Note that we used `$data` here because that was the name we provided to `get_random_structure` and it was the only mode of data that we had.
+If multiple modes were used to generate the random structure, then we `draw_from_multivariate_corr` returns a list with each of them.
 
-## Simulate Differentially Expressed Data
+### Simulate Differentially Expressed Data
 
-Randomly select some genes to be DE.
+To generate a set of 'treatment' samples which differ from the 'control' samples, we will have to modify the random structure to reflect the desired expression values of the treatment group.
+We do this by just choosing some genes at random and picking a fold-change for each at random.
+
 ```{r}
+# fraction of all genes to modify in treatment
 FRAC_DE <- 0.05
+# Min and max value for the log fold change (LFC) for each DE gene chosen
+# non-DE genes will have a LFC of 0
 LFC_MIN <- 0.2
 LFC_MAX <- 2.0
-N_DE <- floor(FRAC_DE * nrow(male_sim))
+N_DE <- floor(FRAC_DE * nrow(control_sim_data))
 
+# Pick which genes are DE
 de_genes <- sample(nrow(male_sim), N_DE)
-```
 
-
-Simulate log fold changes for the case data sets.
-```{r}
+# Pick the LFCs of each of those genes
 de_lfc <- runif(N_DE, LFC_MIN, LFC_MAX) * sample(c(-1, 1), size=N_DE, replace=TRUE)
 ```
 
+Now, we create a new random structure object and modify it to have the desired expression values.
+Information about the marginal distribution of each gene (e.g., mean and variance but not dependence on other genes) is stored in `rs$marginals` for a random structure `rs`.
+The specifics depend upon the `type` used in `get_random_structure`, but for `DESeq2`, the `q` value determines the mean expression, so we change that here.
 
-Generate Cases data sets.
 ```{r}
-if (method == "indep") {
-    male_de_rs <- dep_rs
-    male_de_rs$marginals$data$q[de_genes] <- 2^(de_lfc) * male_de_rs$marginals$data$q[de_genes]
-    
-    male_indep_de_rs <- remove_dependence(male_de_rs)
-    male_indep_de_sim <- generate(male_indep_de_rs, name="Mouse.Cortex.Male.indep.Case")
-} else {
-    male_de_rs <- rs
-    male_de_rs$marginals$data$q[de_genes] <- 2^(de_lfc) * male_de_rs$marginals$data$q[de_genes]
-    
-    male_de_sim <- generate(male_de_rs, name=paste0("Mouse.Cortex.Male.",method,".Case"))
-}
+rs_treatment <- rs_pca
+rs_treatment$marginals$data$q[de_genes] <- 2^(de_lfc) * rs_treatment$marginals$data$q[de_genes]
 ```
 
+Lastly, we generate the data for the 'treatment' samples.
+```{r}
+treatment_sim_data <- draw_from_multivariate_corr(rs_treatment, n_samples=N_SAMPLES, size_factors=library_sizes)$data
+```
+
+## Plot the generated data
+
+To demonstrate the data, we show a PCA plot of the control and treatment groups
+```{r}
+sim_data <- cbind(control_sim_data, treatment_sim_data)
+pca <- prcomp(t(sim_data), center=TRUE, scale.=TRUE, rank.=2)
+pca_points <- predict(t(sim_data))
+pca_data <- tibble(x=pca_points[,1], y=pca_points[,2]) |>
+    mutate(group = c(rep("control", N_SAMPLES), rep("treatment", N_SAMPLES)))
+ggplot(pca_data, aes(x, y, color=group))
+```
