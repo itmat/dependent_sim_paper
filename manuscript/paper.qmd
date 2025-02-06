@@ -4,12 +4,11 @@ author:
     - name: "Jianing Yang"
       orcid: 0000-0002-2048-9398
       affiliations:
-        - name: "Institute for Translational Medicine and Therapeutics, University of Pennsylvania"
         - name: "Chronobiology and Sleep Institute, University of Pennsylvania"
     - name: "Gregory R. Grant"
       orcid: 0000-0002-0139-7658
       affiliations:
-        - name: "Institute for Translational Medicine and Therapeutics, University of Pennsylvania"
+        - name: "Department of Genetics, University of Pennsylvania"
     - name: "Thomas G. Brooks"
       orcid: 0000-0002-6980-0079
       affiliations:
