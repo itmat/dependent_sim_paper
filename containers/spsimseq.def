@@ -1,0 +1,8 @@
+Bootstrap: docker
+From: rocker/tidyverse:4.3
+
+%post
+    apt-get update
+    apt-get install -y libglpk-dev
+
+    R -e 'BiocManager::install("SPsimSeq")'
