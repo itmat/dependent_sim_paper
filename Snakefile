@@ -28,11 +28,14 @@ rule all:
         "simulated_data/Mouse.Cortex.Male.pca.Control.txt",
         "simulated_data/Fly.WholeBody.Male.pca.Control.txt",
         "simulated_data/Cortex_120_simulated_time_series_pca.csv",
+        "simulated_data/SPsimSeq.GSE81142.txt",
+        "simulated_data/SPsimSeq.GSE151923.txt",
         #"time_series_data/Mouse.Cortex.k=2.txt",
         "processed/cyclops/real_data/cyclops_estimated_phaselist.csv",
         expand("processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv",
           method = ["indep", "pca", "wishart", "corpcor"], batch=range(0,20)),
         "processed/DE/Mouse.Cortex.Male.pca.fdr.csv",
+        "processed/compare_to_real.GSE81142.RDS",
         "manuscript/html",
         "manuscript/docx",
 
@@ -96,7 +99,35 @@ rule simulate_fly:
         "images/dependent_sim.sif",
     script:
         "scripts/simulate_data.fly.R"
-        
+
+rule simulate_fly_spsimseq:
+    input:
+        "data/GSE81142.counts.txt.gz",
+        "processed/GSE81142_sample_metadata.txt",
+        sif = "images/spsimseq.sif",
+    output:
+        "simulated_data/SPsimSeq.GSE81142.txt",
+    resources:
+        mem_mb = 36_000
+    container:
+        "images/spsimseq.sif",
+    script:
+        "scripts/SPsimSeq.fly.R"
+
+rule simulate_mouse_spsimseq:
+    input:
+        "processed/GSE151923_sample_metadata.txt",
+        "data/GSE151923_metaReadCount_ensembl.txt.gz",
+        sif = "images/spsimseq.sif",
+    output:
+        "simulated_data/SPsimSeq.GSE151923.txt",
+    resources:
+        mem_mb = 36_000
+    container:
+        "images/spsimseq.sif",
+    script:
+        "scripts/SPsimSeq.mouse.R"
+
 rule sim_de:
     input:
         expand("simulated_data/Mouse.Cortex.Male.{method}.{group}{suffix}",
@@ -196,6 +227,19 @@ rule run_cyclops_real_data:
         mem_mb = 6_000,
     shell:
         "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops --Frac_Var 0.99 --DFrac_Var 0.02"
+
+rule compare_to_real:
+    input:
+        "data/GSE151923_metaReadCount_ensembl.txt.gz",
+        expand("simulated_data/Mouse.Cortex.Male.{method}.Control.txt", method = ['pca', 'corpcor', 'wishart', 'indep'],
+        "simulated_data/SPsimSeq.GSE151923.txt",
+        sif = "images/quarto.sif",
+    output:
+        "processed/compare_to_real.{dataset}.RDS"
+    container:
+        sif = "images/quarto.sif",
+    sript:
+        "scripts/compare_to_real.R"
 
 rule generate_manuscript:
     input:

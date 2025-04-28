@@ -10,10 +10,6 @@ method <- snakemake@wildcards$method
 read_counts <- read.delim("data/GSE81142.counts.txt.gz", row.names=1)
 metadata <- read.delim("processed/GSE81142_sample_metadata.txt")
 
-selected_samples <- (metadata$hour != 0)
-selected_read_counts <- read_counts[,selected_samples]
-selected_metadata <- metadata[selected_samples,]
-
 # Produce simulated data
 N_SAMPLES <- 100
 male_read_counts <- read_counts[,(metadata$sex == "Male") & (metadata$concentration == 0)]
