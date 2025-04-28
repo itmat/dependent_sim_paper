@@ -10,6 +10,7 @@ plots/
 manuscript/*cache
 manuscript/paper_files
 manuscript/html
+manuscript/pdf
 manuscript/paper.html
 manuscript/docx
 .cache
