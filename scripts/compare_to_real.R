@@ -8,9 +8,9 @@ library(rlang)
 
 set.seed(55)
 
-dataset = "GSE81142"
+#dataset = "GSE81142"
 #dataset = "GSE151923"
-#dataset <- snakemake@wildcards$dataset
+dataset <- snakemake@wildcards$dataset
 
 # CONFIGURATION
 METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor", "spsimseq")
@@ -19,18 +19,22 @@ N_SAMPLES <- 96
 
 # Load the real and simulated data ---------------------------------
 if (dataset == "GSE151923") {
-    HIGH_EXPR_CUTOFF <- 300
+    HIGH_EXPR_CUTOFF <- 100
     raw <- read_tsv("data/GSE151923_metaReadCount_ensembl.txt.gz") |>
         select(-GeneName, -Description, -Chromosome, -Strand)
     read_counts <- as.matrix(raw[,2:13])
     rownames(read_counts) <- raw[[1]]
 
-    draws_pca <- read_tsv("simulated_data/Mouse.Cortex.Male.pca.Control.txt")[,2:(N_SAMPLES+1)] |> as.matrix()
-    draws_corpcor <- read_tsv("simulated_data/Mouse.Cortex.Male.corpcor.Control.txt")[,2:(N_SAMPLES+1)] |> as.matrix()
-    draws_wishart <- read_tsv("simulated_data/Mouse.Cortex.Male.wishart.Control.txt")[,2:(N_SAMPLES+1)] |> as.matrix()
-    draws_indep <- read_tsv("simulated_data/Mouse.Cortex.Male.indep.Control.txt")[,2:(N_SAMPLES+1)] |> as.matrix()
+    draws_pca <- (read_tsv("simulated_data/Mouse.Cortex.Male.pca.Control.txt") |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
+    draws_corpcor <- (read_tsv("simulated_data/Mouse.Cortex.Male.corpcor.Control.txt") |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
+    draws_wishart <- (read_tsv("simulated_data/Mouse.Cortex.Male.wishart.Control.txt") |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
+    draws_indep <- (read_tsv("simulated_data/Mouse.Cortex.Male.indep.Control.txt") |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
 
-    draws_spsimseq <- read_tsv("simulated_data/SPsimSeq.XXXX.txt") |>
+    draws_spsimseq <- read_tsv("simulated_data/SPsimSeq.GSE151923.txt") |>
         column_to_rownames("gene_id")
     # fill in missing all-zero genes and reorder
     missing <- rownames(read_counts)[!(rownames(read_counts) %in% rownames(draws_spsimseq))]

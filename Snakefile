@@ -23,6 +23,22 @@ soft_metadata_attributes = {
   },
 }
 
+datasets = {
+  "GSE151923": {
+        "counts": "data/GSE151923_metaReadCount_ensembl.txt.gz",
+        "metadata": "processed/GSE151923_sample_metadata.txt",
+        "simulated_controls": expand("simulated_data/Mouse.Cortex.Male.{method}.Control.txt", method = ['pca', 'corpcor', 'wishart', 'indep']),
+        "spsimseq": "simulated_data/SPsimSeq.GSE151923.txt",
+    },
+
+    "GSE81142": {
+        "counts": "data/GSE81142.counts.txt.gz",
+        "metadata": "processed/GSE81142_sample_metadata.txt",
+        "simulated_controls": expand("simulated_data/Fly.WholeBody.Male.{method}.Control.txt", method = ['pca', 'corpcor', 'wishart', 'indep']),
+        "spsimseq": "simulated_data/SPsimSeq.GSE81142.txt",
+    },
+}
+
 rule all:
     input:
         "simulated_data/Mouse.Cortex.Male.pca.Control.txt",
@@ -35,7 +51,8 @@ rule all:
         expand("processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv",
           method = ["indep", "pca", "wishart", "corpcor"], batch=range(0,20)),
         "processed/DE/Mouse.Cortex.Male.pca.fdr.csv",
-        "processed/compare_to_real.GSE81142.RDS",
+        "processed/compare_to_real_plot.GSE81142.RDS",
+        "processed/compare_to_real_plot.GSE151923.RDS",
         "manuscript/html",
         "manuscript/docx",
 
@@ -228,22 +245,27 @@ rule run_cyclops_real_data:
     shell:
         "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops --Frac_Var 0.99 --DFrac_Var 0.02"
 
+def data_for_dataset(wildcards):
+    dataset = datasets[wildcards.dataset]
+    return [
+        dataset['counts'],
+        dataset['metadata'],
+        dataset['spsimseq'],
+        *dataset['simulated_controls'],
+    ]
 rule compare_to_real:
     input:
-        "data/GSE151923_metaReadCount_ensembl.txt.gz",
-        expand("simulated_data/Mouse.Cortex.Male.{method}.Control.txt", method = ['pca', 'corpcor', 'wishart', 'indep'],
-        "simulated_data/SPsimSeq.GSE151923.txt",
+        data_for_dataset,
         sif = "images/quarto.sif",
     output:
-        "processed/compare_to_real.{dataset}.RDS"
+        "processed/compare_to_real_plot.{dataset}.RDS"
     container:
-        sif = "images/quarto.sif",
-    sript:
+        "images/quarto.sif",
+    script:
         "scripts/compare_to_real.R"
 
 rule generate_manuscript:
     input:
-        "manuscript/compare_to_real.R",
         expand("processed/DE/{tissue}.Male.{method}.fdr.csv",
             method = ["indep", "pca", "wishart", "corpcor"],
             tissue = ["Mouse.Cortex", "Fly.WholeBody"]),
