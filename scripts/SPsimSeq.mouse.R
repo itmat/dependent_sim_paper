@@ -1,6 +1,8 @@
 library(tidyverse)
 library(SPsimSeq)
 
+N_SAMPLES <- 100
+
 metadata <- read.delim("processed/GSE151923_sample_metadata.txt", sep="\t")
 read_counts <- read.delim("data/GSE151923_metaReadCount_ensembl.txt.gz", sep="\t")
 
