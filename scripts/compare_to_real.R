@@ -340,7 +340,7 @@ g5 <- ggplot() +
   geom_hline(data=pca_sdevs |> filter(PC < 12, method == "real"), aes(yintercept=sdev, color="real"), linewidth=1) +
   geom_boxplot(data=pca_sdevs |> filter(PC < 12, method != "real"), aes(x=method, y=sdev, color=method)) +
   scale_color_manual(values=METHOD_COLORS, breaks=METHOD_ORDER, name="method") +
-  theme(axis.text.x = element_text(angle=90))
+  theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1))
 
 compare_to_real_plot <- (g1 | g2) / (g3 | g4) / (g5) + plot_annotation(tag_levels="a")
 
