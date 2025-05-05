@@ -10,6 +10,7 @@ set.seed(55)
 
 #dataset = "GSE81142"
 #dataset = "GSE151923"
+#dataset = "GSE151565"
 dataset <- snakemake@wildcards$dataset
 
 # CONFIGURATION
@@ -36,17 +37,6 @@ if (dataset == "GSE151923") {
 
     draws_spsimseq <- read_tsv("simulated_data/SPsimSeq.GSE151923.txt") |>
         column_to_rownames("gene_id")
-    # fill in missing all-zero genes and reorder
-    missing <- rownames(read_counts)[!(rownames(read_counts) %in% rownames(draws_spsimseq))]
-    present <- rownames(draws_spsimseq)
-    zero_genes <- matrix(0, length(missing), ncol(draws_spsimseq))
-    rownames(zero_genes) <- missing
-    colnames(zero_genes) <- colnames(draws_spsimseq)
-    draws_spsimseq <- rbind(
-        draws_spsimseq,
-        zero_genes
-    )
-    draws_spsimseq <- draws_spsimseq[rownames(read_counts),] # put in the right order
 } else if (dataset == "GSE81142") {
     HIGH_EXPR_CUTOFF <- 30
     raw <- read_tsv("data/GSE81142.counts.txt.gz") |> column_to_rownames("GENE_ID")
@@ -64,27 +54,43 @@ if (dataset == "GSE151923") {
 
     draws_spsimseq <- read_tsv("simulated_data/SPsimSeq.GSE81142.txt") |>
         column_to_rownames("gene_id")
-    # fill in missing all-zero genes and reorder
-    missing <- rownames(read_counts)[!(rownames(read_counts) %in% rownames(draws_spsimseq))]
-    present <- rownames(draws_spsimseq)
-    zero_genes <- matrix(0, length(missing), ncol(draws_spsimseq))
-    rownames(zero_genes) <- missing
-    colnames(zero_genes) <- colnames(draws_spsimseq)
-    draws_spsimseq <- rbind(
-        draws_spsimseq,
-        zero_genes
-    )
-    draws_spsimseq <- draws_spsimseq[rownames(read_counts),] # put in the right order
+} else if (dataset == "GSE151565") {
+    HIGH_EXPR_CUTOFF <- 30
+    raw <- read.csv("processed/Cortex_ZT0-counts.csv") |> 
+        select(!all_of("X331308_CRM55_WT_CTXR_26WKS_M_ZT0_L1.D704")) |>
+        column_to_rownames(var="raw_data.EnsemblID")
+    read_counts <- as.matrix(raw)
 
+    draws_pca <- (read_csv("simulated_data/Cortex_120_simulated_time_series_pca.csv") |>
+                  select("ENSEMBL_ID", starts_with("ZT0_")) |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
+    draws_corpcor <- (read_csv("simulated_data/Cortex_120_simulated_time_series_corpcor.csv") |>
+                  select("ENSEMBL_ID", starts_with("ZT0_")) |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
+    draws_wishart <- (read_csv("simulated_data/Cortex_120_simulated_time_series_wishart.csv") |>
+                  select("ENSEMBL_ID", starts_with("ZT0_")) |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
+    draws_indep <- (read_csv("simulated_data/Cortex_120_simulated_time_series_indep.csv") |>
+                  select("ENSEMBL_ID", starts_with("ZT0_")) |>
+                  column_to_rownames("ENSEMBL_ID"))[,1:N_SAMPLES] |> as.matrix()
 
-    #drop_genes <- c("FBgn0085771", "FBgn0267519", "FBgn0085813")
-    #read_counts <- read_counts[!(rownames(read_counts) %in% drop_genes),]
-    #draws_pca <- draws_pca[!(rownames(draws_pca) %in% drop_genes),]
-    #draws_indep <- draws_indep[!(rownames(draws_indep) %in% drop_genes),]
-    #draws_wishart <- draws_wishart[!(rownames(draws_wishart) %in% drop_genes),]
-    #draws_corpcor <- draws_corpcor[!(rownames(draws_corpcor) %in% drop_genes),]
-    #draws_spsimseq <- draws_spsimseq[!(rownames(draws_spsimseq) %in% drop_genes),]
+    draws_spsimseq <- read_tsv("simulated_data/SPsimSeq.GSE151565.txt") |>
+        column_to_rownames("gene_id")
 }
+
+N_ORIG_SAMPLES <- ncol(read_counts)
+
+# fill in missing all-zero genes and reorder
+missing <- rownames(read_counts)[!(rownames(read_counts) %in% rownames(draws_spsimseq))]
+present <- rownames(draws_spsimseq)
+zero_genes <- matrix(0, length(missing), ncol(draws_spsimseq))
+rownames(zero_genes) <- missing
+colnames(zero_genes) <- colnames(draws_spsimseq)
+draws_spsimseq <- rbind(
+    draws_spsimseq,
+    zero_genes
+)
+draws_spsimseq <- draws_spsimseq[rownames(read_counts),] # put in the right order
 
 # Normalization code --------------------------------
 # adapted from edgeR
@@ -194,9 +200,7 @@ calcNormFactors.default <- function(object, lib.size=NULL, refColumn=NULL, logra
 
 # Scale to Counts Per Million ------------------------
 cpm <- function(x) { # counts per million
-    factors <- apply(x, 2, median) / mean(apply(x, 2, median))
     read_depths <- apply(x, 2, sum)
-    return(t(t(x) / factors))
 
     factors <- calcNormFactors.default(x)
     return(t(t(x) / factors / read_depths * 1e6))
@@ -230,7 +234,7 @@ g2<-ggplot(marg_dist|> filter(real_mean > 0.1))+
   scale_color_viridis_c(option="inferno")
 
 # Plot the top principal components --------------------
-constant_rows <- apply(read_counts, 1, function(x) all(x - mean(x) == 0))
+constant_rows <- apply(read_counts, 1, function(x) all(abs(x - mean(x)) < 1e-5))
 pca <- prcomp(t(scaled_read_data[!constant_rows,]), rank.=2, scale.=TRUE)
 projected_read_data <- predict(pca, t(scaled_read_data[!constant_rows, ]))
 projected_pca <- predict(pca, t(scaled_draws_pca[!constant_rows, ]))
@@ -239,15 +243,29 @@ projected_wishart <- predict(pca, t(scaled_draws_wishart[!constant_rows, ]))
 projected_indep <- predict(pca, t(scaled_draws_indep[!constant_rows, ]))
 projected_spsimseq <- predict(pca, t(scaled_draws_spsimseq[!constant_rows, ]))
 both_data <- data.frame(list(
-    PC1 = c(projected_read_data[1:12,"PC1"], projected_pca[1:12,"PC1"], projected_corpcor[1:12,"PC1"], projected_wishart[1:12,"PC1"], projected_indep[1:12,"PC1"], projected_spsimseq[1:12, "PC1"]),
-    PC2 = c(projected_read_data[1:12,"PC2"], projected_pca[1:12,"PC2"], projected_corpcor[1:12,"PC2"], projected_wishart[1:12,"PC2"], projected_indep[1:12,"PC2"], projected_spsimseq[1:12, "PC2"]),
+    PC1 = c(
+            projected_read_data[1:N_ORIG_SAMPLES,"PC1"],
+            projected_pca[1:N_ORIG_SAMPLES,"PC1"],
+            projected_corpcor[1:N_ORIG_SAMPLES,"PC1"],
+            projected_wishart[1:N_ORIG_SAMPLES,"PC1"],
+            projected_indep[1:N_ORIG_SAMPLES,"PC1"],
+            projected_spsimseq[1:N_ORIG_SAMPLES, "PC1"]
+    ),
+    PC2 = c(
+            projected_read_data[1:N_ORIG_SAMPLES,"PC2"],
+            projected_pca[1:N_ORIG_SAMPLES,"PC2"],
+            projected_corpcor[1:N_ORIG_SAMPLES,"PC2"],
+            projected_wishart[1:N_ORIG_SAMPLES,"PC2"],
+            projected_indep[1:N_ORIG_SAMPLES,"PC2"],
+            projected_spsimseq[1:N_ORIG_SAMPLES, "PC2"]
+    ),
     method = c(
-        rep("real", 12),
-        rep("pca", 12),
-        rep("corpcor", 12),
-        rep("wishart", 12),
-        rep("indep", 12),
-        rep("spsimseq", 12)
+        rep("real", N_ORIG_SAMPLES),
+        rep("pca", N_ORIG_SAMPLES),
+        rep("corpcor", N_ORIG_SAMPLES),
+        rep("wishart", N_ORIG_SAMPLES),
+        rep("indep", N_ORIG_SAMPLES),
+        rep("spsimseq", N_ORIG_SAMPLES)
     )
 )) %>%
   mutate(method = factor(method, levels=METHOD_ORDER, ordered=TRUE))
@@ -300,36 +318,37 @@ PCA <- function(data) {
 }
 pca_sdevs <- tibble(
   method = "real",
-  PC = 1:12,
+  PC = 1:N_ORIG_SAMPLES,
   sdev = PCA(scaled_read_data)$sdev,
 )
 for (i in 0:7) {
+  this_range <- (1+N_ORIG_SAMPLES*i):(N_ORIG_SAMPLES*(i+1))
   pca_sdevs <- rbind(
     pca_sdevs,
     tibble(
       method = "pca",
-      PC = 1:12,
-      sdev = PCA(scaled_draws_pca[,(1+12*i):(12*(i+1))])$sdev,
+      PC = 1:N_ORIG_SAMPLES,
+      sdev = PCA(scaled_draws_pca[,this_range])$sdev,
     ),
     tibble(
       method = "corpcor",
-      PC = 1:12,
-      sdev = PCA(scaled_draws_corpcor[,(1+12*i):(12*(i+1))])$sdev,
+      PC = 1:N_ORIG_SAMPLES,
+      sdev = PCA(scaled_draws_corpcor[,this_range])$sdev,
     ),
     tibble(
       method = "wishart",
-      PC = 1:12,
-      sdev = PCA(scaled_draws_wishart[,(1+12*i):(12*(i+1))])$sdev,
+      PC = 1:N_ORIG_SAMPLES,
+      sdev = PCA(scaled_draws_wishart[,this_range])$sdev,
     ),
     tibble(
       method = "indep",
-      PC = 1:12,
-      sdev = PCA(scaled_draws_indep[,(1+12*i):(12*(i+1))])$sdev,
+      PC = 1:N_ORIG_SAMPLES,
+      sdev = PCA(scaled_draws_indep[,this_range])$sdev,
     ),
     tibble(
       method = "spsimseq",
-      PC = 1:12,
-      sdev = PCA(scaled_draws_spsimseq[,(1+12*i):(12*(i+1))])$sdev,
+      PC = 1:N_ORIG_SAMPLES,
+      sdev = PCA(scaled_draws_spsimseq[,this_range])$sdev,
     ),
     deparse.level=1
   )
@@ -337,8 +356,8 @@ for (i in 0:7) {
 pca_sdevs$method <- factor(pca_sdevs$method, levels=METHOD_ORDER, ordered=TRUE)
 g5 <- ggplot() +
   facet_wrap(facets=vars(PC), labeller=label_both, ncol=6) +
-  geom_hline(data=pca_sdevs |> filter(PC < 12, method == "real"), aes(yintercept=sdev, color="real"), linewidth=1) +
-  geom_boxplot(data=pca_sdevs |> filter(PC < 12, method != "real"), aes(x=method, y=sdev, color=method)) +
+  geom_hline(data=pca_sdevs |> filter(PC < N_ORIG_SAMPLES, method == "real"), aes(yintercept=sdev, color="real"), linewidth=1) +
+  geom_boxplot(data=pca_sdevs |> filter(PC < N_ORIG_SAMPLES, method != "real"), aes(x=method, y=sdev, color=method)) +
   scale_color_manual(values=METHOD_COLORS, breaks=METHOD_ORDER, name="method") +
   theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1))
 

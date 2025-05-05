@@ -9,6 +9,7 @@ method <- snakemake@wildcards$method
 
 # use ZT0 of raw time series data to get dependence structure
 male_read_counts <- read.csv("processed/Cortex_ZT0-counts.csv") |> 
+    select(!all_of("X331308_CRM55_WT_CTXR_26WKS_M_ZT0_L1.D704")) |>
     column_to_rownames(var="raw_data.EnsemblID")
 
 # Get dependence structure
@@ -23,7 +24,7 @@ if (method == "pca") {
 } else if (method == "wishart") {
     set.seed(3)
     # Simulate with the spiked Wishart method
-    male_rs <- get_random_structure(list(data=male_read_counts), rank=11, method="spiked Wishart", types="DESeq2")
+    male_rs <- get_random_structure(list(data=male_read_counts), rank=10, method="spiked Wishart", types="DESeq2")
 } else if (method == "indep") {
     set.seed(4)
     # Simulate without any dependence
