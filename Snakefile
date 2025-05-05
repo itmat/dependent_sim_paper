@@ -37,6 +37,12 @@ datasets = {
         "simulated_controls": expand("simulated_data/Fly.WholeBody.Male.{method}.Control.txt", method = ['pca', 'corpcor', 'wishart', 'indep']),
         "spsimseq": "simulated_data/SPsimSeq.GSE81142.txt",
     },
+    "GSE151565": {
+        "counts": "processed/Cortex_ZT0-counts.csv",
+        "metadata":"data/GSE151565_Cortex-counts.csv.gz", #metadata is in column headers
+        "simulated_controls": expand("simulated_data/Cortex_120_normalized_simulated_time_series_{method}.csv", method = ['pca', 'corpcor', 'wishart', 'indep']),
+        "spsimseq": "simulated_data/SPsimSeq.GSE151565.txt",
+    }
 }
 
 rule all:
@@ -53,6 +59,7 @@ rule all:
         "processed/DE/Mouse.Cortex.Male.pca.fdr.csv",
         "processed/compare_to_real_plot.GSE81142.RDS",
         "processed/compare_to_real_plot.GSE151923.RDS",
+        "processed/compare_to_real_plot.GSE151565.RDS",
         "manuscript/html",
         "manuscript/docx",
 
@@ -144,6 +151,19 @@ rule simulate_mouse_spsimseq:
         "images/spsimseq.sif",
     script:
         "scripts/SPsimSeq.mouse.R"
+
+rule simulate_mouse_timeseries_spsimseq:
+    input:
+        "data/GSE151565_Cortex-counts.csv.gz",
+        sif = "images/spsimseq.sif",
+    output:
+        "simulated_data/SPsimSeq.GSE151565.txt",
+    resources:
+        mem_mb = 60_000
+    container:
+        "images/spsimseq.sif",
+    script:
+        "scripts/SPsimSeq.mouse_timeseries.R"
 
 rule sim_de:
     input:
