@@ -70,10 +70,31 @@ Depending upon settings used, performance of CYCLOPS dependent substantially on 
 
 ## Results
 
-Assume that we have a reference dataset $X$ given by an $p \times n$ data matrix of $p$ features measured in each of $n$ independent samples.
-We want to capture correlations between the $p$ features, which could represent gene expressions, protein abundances, or other measured values.
+We start with a reference data set $X$ given by an $p \times n$ data matrix of $p$ features measured in each of $n$ independent samples, which could be any real data set of interest.
+Our goal is to generate simulated data set that looks, at least on average, the same as this reference data set.
+To do this, we need to capture correlations between the $p$ features, which could represent gene expressions, protein abundances, or other measured values.
 We refer to these features as genes for simplicity.
-Our goal is to generate simulated data with the same $p$ genes, the same marginal distributions of each gene as in $X$ and realistic gene-gene dependence.
+
+Our methods are based off the well-known Gaussian copula method, which uses a multivariate normal distribution to capture aspects of the gene-gene dependence, without necessarily assuming that the data is normally distributed.
+This multivariate normal distribution is parameterized by a $p \times p$ covariance matrix, $\Sigma$.
+In omics, choosing this $\Sigma$ presents a challenge since $n < p$.
+The most obvious choice is to use the sample covariance matrix $\widehat \Sigma$ of the reference data set (possibly after some transformation of the data).
+It is important to note that using $\widehat Sigma$ itself is a poor choice for $\Sigma$.
+Indeed, we consider a choice of $\Sigma$ to be successful if data sets simulated using $\Sigma$ have sample covaraince matrices that are similar to $\widehat \Sigma$.
+Counter-intuitively, data simulated using $\Sigma := \widehat \Sigma$ have sample covariance matrices that systematically and substantially differ from $\widehat \Sigma$.
+
+This is due to the fact that $\widehat \Sigma$ is low rank, specifically at most rank $n - 1$, which is less than $p$ in typical omics studies.
+This limitation means that any data generated from the multivariate normal distribution of that $\Sigma$ will lie on a $n-1$-dimensional hyperplane.
+Therefore, newly simulated samples will actually be linear combination of the samples of the reference data set.
+Intuitively, this means that the entire probability distribution of possible $p \times n$ dimensional omics data sets have been squished into a $n-1$ dimensional space, generating much higher gene-gen correlations than in the reference data set.
+In contrast, we know that omics contains at least some level of random noise that is approximately independent from one gene to the next.
+For example, RNA-seq involves a random sampling of fragments from the true sample of RNA molecules and other sources involve various background noise effects.
+We therefore need to "inject" some level of additional randomness that is independent between genes on top of the correlations captured by $\widehat \Sigma$
+
+We present three methods - called here PCA, spiked Wishart, and corpcor - for making this choice of $\Sigma$, all which take the form
+$$ \Sigma = D^2 + PP^T $$
+where $D$ is a diagonal matrix capturing the injected independence and $PP^T$ is a low-rank correlation matrix derived from $\widehat \Sigma$.
+An additional advantage of this special form is that data may be generated very efficiently, see Methods, compared to arbitrary $\Sigma$ which typically require a Cholesky or eigenvalue decomposition.
 
 ### Multivariate normal distribution
 
@@ -145,13 +166,16 @@ For the PCA method, we used $k=2$ dimensions and for the spiked Wishart, $k=11$.
 The coprcor method always uses the full data matrix, analogous to $k=11$.
 Note that PCA method must use a rank $k<11$ in order to generate full-rank data, see Methods, so these parameters are not directly comparable across methods.
 
+We also ran for comparison SPsimSeq, another RNA-seq simulator for both bulk and single-cell that uses a Gaussian copula-based model of dependence, see Supplemental Methods for details.
+
 Simulated data captures the genes' mean and variance accurately (@fig-compare-to-real a-b).
 Next, we compared to the real data set when projected onto the top two principal components of the real data set (@fig-compare-to-real c).
 The simulations with dependence are distributed around the entire space like the real data, but the independent simulations have unrealistically low variance in these components, clustering tightly around the origin.
 
-Then, we computed the gene-gene correlation on pairs of high-expressed genes (at least 300 mean reads).
+Then, we computed the gene-gene correlation on pairs of high-expressed genes (at least 100 mean reads in the real data set).
 The simulation with independence showed the least levels of gene-gene correlations (@fig-compare-to-real d).
 However, the PCA method overshot the reference data set and the spiked Wishart and corpcor methods only slightly improved upon the independent simulation.
+The SPsimSeq simulator performed similarly to the PCA method.
 
 Lastly, we compared the variances of principal components on each data set (@fig-compare-to-real e).
 These were computed separately for each data set, unlike (@fig-compare-to-real c) which used the reference data set's PCA weights for all data sets.
@@ -159,6 +183,8 @@ The independent data has much lower variance than the real data set in the top f
 The spiked Wishart method comes closest to the real data set, as it optimizes for fitting these values.
 Surprisingly, the corpcor method performs only somewhat better than the independent method.
 The PCA method puts a large amount of variance into the first two components (due to using $k=2$) and then undershoots the other components.
+Like PCA, the SPsimSeq simulator, overshot the first PCA component but did a better job matching lower PCA coordinates.
+
 
 ```{r}
 #| label: fig-compare-to-real
@@ -176,15 +202,17 @@ First, the independent filtering step [@Bourgon2010-uv] assumes independence but
 Relatedly, the false discovery rate (FDR) [@BH_FDR] allows only certain forms of dependence.
 Lastly, DESeq2's empirical Bayes steps could possibly be affected by gene dependence.
 
-We used a fly whole body RNA-Seq data set GSE81142 and selected samples of male flies without treatment and after at least 2 hours of feeding to simulate 5 "control" samples.
+We used a fly whole body RNA-Seq data set GSE81142, see Supplemental Figure 1, and selected samples of male flies without treatment and after at least 2 hours of feeding to simulate 5 "control" samples.
+Unnormalized read counts were used as the reference data set and all simulations used the DESeq2-based negative binomial model.
 We then randomly selected 5% of the genes to be differentially expressed, with absolute $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, either up or down regulated chosen randomly, and simulated 5 "experimental" samples.
 This was repeated 20 times for each of four dependence conditions (independent, PCA, Wishart, and corpcor).
 
 Finally, we ran DESeq2 on each simulated 5 vs 5 experiment and compared the output FDR with the true percentages of genes that are differential expressed (@fig-DESeq2 a-d).
 We observed that DESeq2 is anti-conservative on all data sets, with similar mean true FDRs for each estimated FDR cutoff.
-However, there was a greater variance in the performance of DESeq2 on the data sets simulated with dependence, indicating that it performs less consistently on data sets with gene-gene dependence, as in real data sets.
+However, we note that this anti-conservative nature is most present at very low FDR thresholds, was typically associated with only a single digit number of false positive genes.
+While that mean behavior was consistant whether or not the simulation included gene-gene dependence, simulations with dependence showed a substantially greater variance in the performance of DESeq2.
 
-To demonstrate the application of our simulation method for another organism, we also simulated data sets using mouse cortex data set GSE151923 [@Wang2022] and selected samples from male mice.
+To demonstrate the application of our simulation method for another organism, we also simulated data sets using the mouse cortex data set GSE151923 [@Wang2022] and selected samples from male mice.
 We then simulated differential expression experiments as above and observed a similar result (@fig-DESeq2 e-f) as for the fly whole body data sets.
 
 ```{r}
@@ -203,8 +231,9 @@ DESeq2_fdr_plot
 ### CYCLOPS application
 
 We next used our simulation method to benchmark CYCLOPS [@Anafi2017], which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures.
-We chose a mouse cortex time series data set GSE151565, which contains a total of 77 samples every 3 hours, for 36 hours.
-We computed the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples and computed the means of gene expressions at each time point.
+We chose a mouse cortex time series data set GSE151565, see Supplemental Figure 2, which contains a total of 77 samples every 3 hours, for 36 hours.
+As before, unnormalized read counts were used as the reference data set and all simulations used the DESeq2-based negative binomial model.
+We computed the dependence structure of the genes as well as the variances of marginal distributions using the 11 time point 0 samples after removing one outlier and computed the means of gene expressions at each time point.
 We then used these to simulate 20 time series data sets for each of the independent, PCA, Wishart, and corpcor simulation methods.
 
 We ran CYCLOPS on each data set with a list of cyclic mouse genes (from [@Zhang2014], JTK p-value $<0.05$), which yielded an estimated relative time for each sample.
@@ -311,7 +340,11 @@ Moreover, it can support multi-modal data such as is increasingly common in mult
 
 We demonstrated the importance of including gene-gene dependence in simulated data by two application benchmarks.
 In the first, DESeq2 results were substantially more variable when simulating with gene-gene dependence.
+This indicates that DESeq2's had an increased chance of a larger simultaneous number of false positives, as well as increased chance of fewer false positives, when data included realistic dependence.
+We therefore recommend that benchmarking of differential expression methods should include gene-gene dependence whenever possible.
+This is despite the fact that differential expression is largely addressing a problem of the behavior of individual genes.
 In the second, CYCLOPS performance in estimating circadian phases depends upon gene-gene dependence, was sensitive to dependence structure of the data.
+Unlike DESeq2, CYCLOPS explicitly makes use of the correlations of genes and therefore this result is not surprising but still demonstrates the potential impact of the assumption of independence when benchmarking.
 
 Our comparisons to a real dataset show that none of our three methods are able to exactly capture all aspects of the real dataset.
 In particular, the gene-gene correlations were too high in the PCA method and too low in the spiked Wishart and corpcor methods.
@@ -325,11 +358,15 @@ Nonetheless, these methods represent significant improvements by other metrics a
 We highlight some alternative approaches and software packages that have been taken below.
 
 The R package [SPsimSeq](https://github.com/CenterForStatistics-UGent/SPsimSeq) [@Assefa2020] provides a dedicated RNA-seq and single-cell RNA-seq simulator using a Gaussian copula approach to simulate gene dependence.
-In contrast to this package, it uses WGCNA to determine the correlation matrix, which is a gene network approach.
-However, this method takes significant computational resources.
-Indeed, the `SPsimSeq` paper generated data for just 5000 genes based on a randomly sampled 5000 gene subset of the RNA-seq data and our attempts to use `SPsimSeq` to generate a full sample exhausted the memory of a 24GB computer.
-In contrast, our method runs in seconds to generate a 40,000 gene samples on the same computer.
-`SPsimSeq` is more specialized and full-featured for RNA-seq simulation, providing, for example, native differential expression (DE) options.
+In contrast to this package, it uses a two-step randomization.
+In short, it first fits distributions to each genes and then bins those distributions into discrete buckets.
+Then, new data is generated by drawing from a multivariate normal distribution whose covariance matrix equals the sample covariance matrix of the reference data set.
+These values are used to choose which bucket each gene is drawn from.
+Then, each gene's final value is drawn uniformly and independently from within its chosen bucket.
+Therefore, SPsimSeq induces correlation in the first multivarainte normal draw, but then weakens it in the second independent uniform step.
+This two-step process makes it challenging to compare on theoretical grounds to our proposed methods since it will dependend upon parameters such as the number of buckets used.
+More fine-grained buckets will induce higher correlation, and in the limit of infinite buckets, it should approach our PCA method with $k$ equal to the number of samples in the reference data set.
+`SPsimSeq` is more specialized and full-featured for RNA-seq simulation, providing, for example, native differential expression (DE) options,.
 In comparison, our `dependentsimr` package requires manually setting marginal expression values to inject DE, but also supports other marginal distributions for situations outside of RNA-seq.
 
 The [scDesign2](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02367-2) simulator [@Sun2021] for single-cell RNA-seq also uses Gaussian copula and, like our method, uses the approach of estimating the correlation matrix from the normalized dataset.
@@ -346,7 +383,7 @@ All of these packages provide more flexibility in specifying dependence than our
 
 Source code for all simulations and figures in this plot is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
 Source code for the `dependentsimr` package is available at [github.com/tgbrooks/dependent_sim](https://github.com/tgbrooks/dependent_sim/).
-All data used is available with accession numbers GSE151923, GSE81142, GSE151565.
+All data used is available from the Gene Expression Omnibus (GEO) with accession numbers GSE151923, GSE81142, GSE151565.
 
 ## Funding statement and competing interests
 
