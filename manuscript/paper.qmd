@@ -138,11 +138,6 @@ This method is computationally efficient, taking hardly any more time or memory 
 
 ### Comparison to real data
 
-```{r}
-#| include: false
-source("compare_to_real.R")
-```
-
 To compare the three simulation methods with a real data set, we chose as a references data set 12 mouse cortex RNA-seq samples from accession GSE151923 [@Wang2022].
 We then simulated data mimicking this reference using all three simulation methods (PCA, spiked Wishart, and corpcor) as well as a simulation with independent genes.
 We repeated the simulations, each of 12 samples, a total of 8 times to estimate variance.
@@ -167,10 +162,10 @@ The PCA method puts a large amount of variance into the first two components (du
 
 ```{r}
 #| label: fig-compare-to-real
-#| fig-cap: !expr glue::glue("Comparison to real data run on a mouse cortex data set from GSE151923. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled in real and PCA simulated data. The line of equality is marked in black. Points are colored according to the density of points in their region. Wishart and corpcor methods give similar results (not shown). (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). Genes with at least {HIGH_EXPR_CUTOFF} reads were used. Values on the diagonal line indicate a match between the simulated and real data sets. (d) Projections onto the top two principal components of the real data set for both real and simulated data. All 8 simulations (96 samples for each simulation) shown. (e) Principal component analysis was performed on all data sets and the variance captured by the top components is shown. Unlike (d), these components were fit from each data set considered separately instead of reusing the weights from the real data.")
+#| fig-cap: "Comparison to real data run on a mouse cortex data set from GSE151923. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled in real and PCA simulated data. The line of equality is marked in black. Points are colored according to the density of points in their region. Wishart and corpcor methods give similar results (not shown). (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). Genes with at least 100 reads were used. Values on the diagonal line indicate a match between the simulated and real data sets. (d) Projections onto the top two principal components of the real data set for both real and simulated data. All 8 simulations (96 samples for each simulation) shown. (e) Principal component analysis was performed on all data sets and the variance captured by the top components is shown. Unlike (d), these components were fit from each data set considered separately instead of reusing the weights from the real data."
 #| fig-width: 10
 #| fig-height: 10
-compare_to_real_plot
+readRDS("../processed/compare_to_real_plot.GSE151923.RDS")
 ```
 
 ### DESeq2 application

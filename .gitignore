@@ -13,6 +13,9 @@ manuscript/html
 manuscript/pdf
 manuscript/paper.html
 manuscript/docx
+manuscript/supplemental/html/
+manuscript/supplemental/supplemental_cache/
+manuscript/supplemental/supplemental_files/
 .cache
 
 .Rhistory
