@@ -45,6 +45,9 @@ datasets = {
     }
 }
 
+wildcard_constraints:
+    render_target = "[a-zA-Z0-9]+"
+
 rule all:
     input:
         "simulated_data/Mouse.Cortex.Male.pca.Control.txt",
@@ -62,6 +65,7 @@ rule all:
         "processed/compare_to_real_plot.GSE151565.RDS",
         "manuscript/html",
         "manuscript/docx",
+        "manuscript/supplemental/html",
 
 rule generate_sif:
     input:
@@ -293,10 +297,24 @@ rule generate_manuscript:
         expand("processed/cyclops/{method}/batch={batch}/cyclops_estimated_phaselist.csv", 
             method = ["indep", "pca", "wishart", "corpcor"], 
             batch=range(0,20)),
+        "processed/compare_to_real_plot.GSE151923.RDS",
         index = "manuscript/paper.qmd",
         sif = "images/quarto.sif",
     output:
         directory("manuscript/{render_target}")
+    container:
+        "images/quarto.sif"
+    shell:
+        "quarto render {input.index} --output-dir {wildcards.render_target} --to {wildcards.render_target}"
+
+rule generate_supplemental:
+    input:
+        "processed/compare_to_real_plot.GSE81142.RDS",
+        "processed/compare_to_real_plot.GSE151565.RDS",
+        index = "manuscript/supplemental/supplemental.qmd",
+        sif = "images/quarto.sif",
+    output:
+        directory("manuscript/supplemental/{render_target}")
     container:
         "images/quarto.sif"
     shell:
