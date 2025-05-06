@@ -19,6 +19,7 @@ editor:
 execute:
   echo: false
   cache: true
+  warning: false
 format:
   html:
     toc: true
@@ -79,16 +80,62 @@ Our methods are based off the well-known Gaussian copula method, which uses a mu
 This multivariate normal distribution is parameterized by a $p \times p$ covariance matrix, $\Sigma$.
 In omics, choosing this $\Sigma$ presents a challenge since $n < p$.
 The most obvious choice is to use the sample covariance matrix $\widehat \Sigma$ of the reference data set (possibly after some transformation of the data).
-It is important to note that using $\widehat Sigma$ itself is a poor choice for $\Sigma$.
-Indeed, we consider a choice of $\Sigma$ to be successful if data sets simulated using $\Sigma$ have sample covaraince matrices that are similar to $\widehat \Sigma$.
-Counter-intuitively, data simulated using $\Sigma := \widehat \Sigma$ have sample covariance matrices that systematically and substantially differ from $\widehat \Sigma$.
+However, using $\widehat Sigma$ is a poor choice for $\Sigma$.
+Indeed, we consider a choice of $\Sigma$ to be successful if data sets of $n$ samples simulated using $\Sigma$ have sample covaraince matrices that are similar to $\widehat \Sigma$.
+Counter-intuitively, data simulated using $\Sigma := \widehat \Sigma$ have sample covariance matrices that systematically and substantially differ from $\widehat \Sigma$, see @fig-intro.
+
+```{r}
+#| label: fig-intro
+#| fig-cap: "Eigenvalues of the sample covariance matrix $\\widehat \\Sigma$ when estimated from the reference data set and when estimated from simulated data using $\\Sigma$ equal to $\\widehat \\Sigma$ of the reference data set ('simulated'). Eigenvalues are numbered by size. 100 genes and 12 samples were used for both reference and simulated data sets. Both reference and simulated data follow a multivariate normal distribution."
+#| fig-width: 5
+#| fig-height: 4
+
+library(MASS)
+library(tidyverse)
+
+# create reference aka 'real' data set
+temp <- matrix(rnorm(100*100), 100, 100)
+Sigma_true <- temp %*% t(temp)
+reference_data <- mvrnorm(n=12, mu=rep(0,100), Sigma = Sigma_true) |> t()
+Sigma_hat <- cov(reference_data |> t())
+
+
+# Run 20 simulations and collate eigenvalues of the sample covariance matrix
+temp <- list()
+temp[[1]] <-   tibble(
+  number = 1:11,
+  eigenvalue = eigen(Sigma_hat)$values[1:11],
+  type = "reference",
+  iter = 0,
+)
+for (i in 1:20) {
+  sim_data <- mvrnorm(n=12, mu=rep(0,100), Sigma = Sigma_hat) |> t()
+  Sigma_sim <- cov(sim_data |> t())
+
+  # collate eigenvalues of sample covariance matrix of the simulated data
+  temp[[length(temp) + 1]] <- tibble(
+    number = 1:11,
+    eigenvalue = eigen(Sigma_sim)$values[1:11],
+    type = "simulated",
+    iter = i,
+  )
+}
+eigenvalue_data <- bind_rows(temp)
+
+# Plot the eigenvalues
+ggplot(eigenvalue_data |> filter(type != "reference"), aes(x=number, y = eigenvalue, color = type, group=iter)) +
+  geom_line(linewidth=2, alpha=0.5) +
+  geom_line(data = eigenvalue_data |> filter(type == "reference"), linewidth=4) +
+  labs(x = "eigenvalue number", y = "eigenvalue")
+```
+
 
 This is due to the fact that $\widehat \Sigma$ is low rank, specifically at most rank $n - 1$, which is less than $p$ in typical omics studies.
 This limitation means that any data generated from the multivariate normal distribution of that $\Sigma$ will lie on a $n-1$-dimensional hyperplane.
 Therefore, newly simulated samples will actually be linear combination of the samples of the reference data set.
-Intuitively, this means that the entire probability distribution of possible $p \times n$ dimensional omics data sets have been squished into a $n-1$ dimensional space, generating much higher gene-gen correlations than in the reference data set.
+Intuitively, this means that the entire probability distribution of possible $p \times n$ dimensional omics data sets have been squished into a $n-1$ dimensional space, generating much higher gene-gene correlations than in the reference data set.
 In contrast, we know that omics contains at least some level of random noise that is approximately independent from one gene to the next.
-For example, RNA-seq involves a random sampling of fragments from the true sample of RNA molecules and other sources involve various background noise effects.
+For example, RNA-seq involves a random sampling of fragments from the true sample of RNA molecules and other omics modes involve various background noise effects.
 We therefore need to "inject" some level of additional randomness that is independent between genes on top of the correlations captured by $\widehat \Sigma$
 
 We present three methods - called here PCA, spiked Wishart, and corpcor - for making this choice of $\Sigma$, all which take the form
