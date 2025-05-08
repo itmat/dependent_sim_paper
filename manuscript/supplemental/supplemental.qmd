@@ -47,6 +47,32 @@ readRDS("../../processed/compare_to_real_plot.GSE81142.RDS")
 readRDS("../../processed/compare_to_real_plot.GSE151565.RDS")
 ```
 
+### Benchmark
+```{r}
+#| label: fig-benchmark
+#| fig-cap: "Comparison of (a) run time and (b) memory usage for our methods and SPsimSeq. 100 samples were generated with a varying number of genes. GSE151564 dataset was randomly subsetted to have the required number of genes to be used as the reference data set."
+#| fig-width: 8
+#| fig-height: 4
+library(tidyverse)
+library(patchwork)
+METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor", "SPsimSeq")
+METHOD_COLORS <- c("black", RColorBrewer::brewer.pal(length(METHOD_ORDER)-1, "Dark2"))
+benchmark <- read_tsv("../../processed/benchmark/results.txt")
+g1 <- ggplot(benchmark, aes(x=n_genes, y=time, color=method)) +
+    geom_line(linewidth=2) +
+    labs(x = "N genes", y = "time (seconds)") + 
+    scale_color_manual(values = METHOD_COLORS, breaks = METHOD_ORDER, name="method") +
+    scale_x_log10() +
+    scale_y_log10()
+g2 <- ggplot(benchmark, aes(x=n_genes, y=max_rss, color=method)) +
+    geom_line(linewidth=2) +
+    labs(x = "N genes", y = "memory (MB)") +
+    scale_color_manual(values = METHOD_COLORS, breaks = METHOD_ORDER, name="method") +
+    scale_x_log10() +
+    scale_y_log10()
+g1 + g2 + plot_annotation(tag_levels="a") + plot_layout(guides = "collect")
+```
+
 ## Supplemental Methods
 
 ### Running SPsimSeq
