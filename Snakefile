@@ -46,7 +46,8 @@ datasets = {
 }
 
 wildcard_constraints:
-    render_target = "[a-zA-Z0-9]+"
+    render_target = "[a-zA-Z0-9]+",
+    method = "pca|wishart|indep|corpcor",
 
 rule all:
     input:
@@ -63,8 +64,9 @@ rule all:
         "processed/compare_to_real_plot.GSE81142.RDS",
         "processed/compare_to_real_plot.GSE151923.RDS",
         "processed/compare_to_real_plot.GSE151565.RDS",
+        "processed/benchmark/results.txt",
         "manuscript/html",
-        "manuscript/docx",
+        #"manuscript/docx",
         "manuscript/supplemental/html",
 
 rule generate_sif:
@@ -288,6 +290,51 @@ rule compare_to_real:
     script:
         "scripts/compare_to_real.R"
 
+rule simulate_for_benchmark:
+    input:
+        "processed/Cortex_ZT0-counts.csv",
+        sif = "images/dependent_sim.sif",
+    output:
+        "processed/benchmark/{method}/{n_genes}.txt"
+    benchmark:
+        "processed/benchmark/{method}/{n_genes}.benchmark.txt"
+    resources:
+        mem_mb = 4_000
+    container:
+        "images/dependent_sim.sif"
+    script:
+        "scripts/simulate.benchmark.R"
+
+rule simulate_spsimseq_for_benchmark:
+    input:
+        "processed/Cortex_ZT0-counts.csv",
+        sif = "images/spsimseq.sif",
+    output:
+        "processed/benchmark/SPsimSeq/{n_genes}.txt"
+    resources:
+        mem_mb = 60_000,
+    benchmark:
+        "processed/benchmark/SPsimSeq/{n_genes}.benchmark.txt"
+    container:
+        "images/spsimseq.sif"
+    script:
+        "scripts/SPsimSeq.benchmark.R"
+
+rule benchmark:
+    input:
+        results = expand("processed/benchmark/{method}/{n_genes}.txt",
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq"],
+            n_genes = [1000, 2000, 4000, 8000, 16000, 32000],
+        ),
+        benchmarks = expand("processed/benchmark/{method}/{n_genes}.benchmark.txt",
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq"],
+            n_genes = [1000, 2000, 4000, 8000, 16000, 32000],
+        )
+    output:
+        "processed/benchmark/results.txt",
+    script:
+        "scripts/benchmark.R"
+
 rule generate_manuscript:
     input:
         expand("processed/DE/{tissue}.Male.{method}.fdr.csv",
@@ -311,6 +358,7 @@ rule generate_supplemental:
     input:
         "processed/compare_to_real_plot.GSE81142.RDS",
         "processed/compare_to_real_plot.GSE151565.RDS",
+        "processed/benchmark/results.txt",
         index = "manuscript/supplemental/supplemental.qmd",
         sif = "images/quarto.sif",
     output:
