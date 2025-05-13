@@ -57,7 +57,6 @@ if (dataset == "GSE151923") {
 } else if (dataset == "GSE151565") {
     HIGH_EXPR_CUTOFF <- 30
     raw <- read.csv("processed/Cortex_ZT0-counts.csv") |> 
-        select(!all_of("X331308_CRM55_WT_CTXR_26WKS_M_ZT0_L1.D704")) |>
         column_to_rownames(var="raw_data.EnsemblID")
     read_counts <- as.matrix(raw)
 

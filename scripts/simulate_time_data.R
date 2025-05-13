@@ -9,7 +9,6 @@ method <- snakemake@wildcards$method
 
 # use ZT0 of raw time series data to get dependence structure
 male_read_counts <- read.csv("processed/Cortex_ZT0-counts.csv") |> 
-    select(!all_of("X331308_CRM55_WT_CTXR_26WKS_M_ZT0_L1.D704")) |>
     column_to_rownames(var="raw_data.EnsemblID")
 
 # Get dependence structure
