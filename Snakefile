@@ -253,7 +253,7 @@ rule run_cyclops:
     container:
         "file://images/cyclops.sif",
     shell:
-        "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops --Frac_Var 0.99 --DFrac_Var 0.02"
+        "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops --Frac_Var 0.99 --DFrac_Var 0.01"
 
 rule run_cyclops_real_data:
     input:
@@ -269,7 +269,7 @@ rule run_cyclops_real_data:
     resources:
         mem_mb = 6_000,
     shell:
-        "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops --Frac_Var 0.99 --DFrac_Var 0.02"
+        "julia /runCYCLOPS.jl --infile {input.expression} --seedfile {input.seedfile} --outdir {params.outdir} --Out_Symbol cyclops --Frac_Var 0.99 --DFrac_Var 0.01"
 
 def data_for_dataset(wildcards):
     dataset = datasets[wildcards.dataset]
