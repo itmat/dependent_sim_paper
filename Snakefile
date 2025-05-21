@@ -134,7 +134,7 @@ rule simulate_fly_spsimseq:
     input:
         "data/GSE81142.counts.txt.gz",
         "processed/GSE81142_sample_metadata.txt",
-        sif = "images/spsimseq.sif",
+        sif = ancient("images/spsimseq.sif"),
     output:
         "simulated_data/SPsimSeq.GSE81142.txt",
     resources:
@@ -148,7 +148,7 @@ rule simulate_mouse_spsimseq:
     input:
         "processed/GSE151923_sample_metadata.txt",
         "data/GSE151923_metaReadCount_ensembl.txt.gz",
-        sif = "images/spsimseq.sif",
+        sif = ancient("images/spsimseq.sif"),
     output:
         "simulated_data/SPsimSeq.GSE151923.txt",
     resources:
@@ -161,7 +161,7 @@ rule simulate_mouse_spsimseq:
 rule simulate_mouse_timeseries_spsimseq:
     input:
         "data/GSE151565_Cortex-counts.csv.gz",
-        sif = "images/spsimseq.sif",
+        sif = ancient("images/spsimseq.sif"),
     output:
         "simulated_data/SPsimSeq.GSE151565.txt",
     resources:
@@ -308,11 +308,11 @@ rule simulate_for_benchmark:
 rule simulate_spsimseq_for_benchmark:
     input:
         "processed/Cortex_ZT0-counts.csv",
-        sif = "images/spsimseq.sif",
+        sif = ancient("images/spsimseq.sif"),
     output:
         "processed/benchmark/SPsimSeq/{n_genes}.txt"
     resources:
-        mem_mb = 60_000,
+        mem_mb = 90_000,
     benchmark:
         "processed/benchmark/SPsimSeq/{n_genes}.benchmark.txt"
     container:
@@ -320,15 +320,30 @@ rule simulate_spsimseq_for_benchmark:
     script:
         "scripts/SPsimSeq.benchmark.R"
 
+rule simulate_vinecopula_for_benchmark:
+    input:
+        "processed/Cortex_ZT0-counts.csv",
+        sif = "images/spsimseq.sif",
+    output:
+        "processed/benchmark/vinecopula/{n_genes}.txt"
+    resources:
+        mem_mb = 90_000,
+    benchmark:
+        "processed/benchmark/vinecopula/{n_genes}.benchmark.txt"
+    container:
+        "images/spsimseq.sif"
+    script:
+        "scripts/vinecopulib.benchmark.R"
+
 rule benchmark:
     input:
         results = expand("processed/benchmark/{method}/{n_genes}.txt",
-            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq"],
-            n_genes = [1000, 2000, 4000, 8000, 16000, 32000],
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula"],
+            n_genes = [500, 1000, 2000, 4000, 8000, 16000, 32000],
         ),
         benchmarks = expand("processed/benchmark/{method}/{n_genes}.benchmark.txt",
-            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq"],
-            n_genes = [1000, 2000, 4000, 8000, 16000, 32000],
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula"],
+            n_genes = [500, 1000, 2000, 4000, 8000, 16000, 32000],
         )
     output:
         "processed/benchmark/results.txt",

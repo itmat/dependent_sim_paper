@@ -50,14 +50,16 @@ readRDS("../../processed/compare_to_real_plot.GSE151565.RDS")
 ### Benchmark
 ```{r}
 #| label: fig-benchmark
-#| fig-cap: "Comparison of (a) run time and (b) memory usage for our methods and SPsimSeq. 100 samples were generated with a varying number of genes. GSE151564 dataset was randomly subsetted to have the required number of genes to be used as the reference data set."
+#| fig-cap: "Comparison of (a) run time and (b) memory usage for our methods, SPsimSeq, and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. GSE151564 dataset was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
 #| fig-width: 8
 #| fig-height: 4
 library(tidyverse)
 library(patchwork)
-METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor", "SPsimSeq")
+METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula")
 METHOD_COLORS <- c("black", RColorBrewer::brewer.pal(length(METHOD_ORDER)-1, "Dark2"))
-benchmark <- read_tsv("../../processed/benchmark/results.txt")
+benchmark <- read_tsv("../../processed/benchmark/results.txt") |>
+    filter(!is.na(time)) # drop the ones that aren't run completely due to time/memory constraints
+
 g1 <- ggplot(benchmark, aes(x=n_genes, y=time, color=method)) +
     geom_line(linewidth=2) +
     labs(x = "N genes", y = "time (seconds)") + 
@@ -77,7 +79,7 @@ g1 + g2 + plot_annotation(tag_levels="a") + plot_layout(guides = "collect")
 
 ### Running SPsimSeq
 
-The R package [SPsimSeq](https://github.com/CenterForStatistics-UGent/SPsimSeq) [@Assefa2020] provides a dedicated RNA-seq and single-cell RNA-seq simulator using a Gaussian copula approach to simulate gene dependence.
+The R package SPsimSeq [@Assefa2020] provides a dedicated RNA-seq and single-cell RNA-seq simulator using a Gaussian copula approach to simulate gene dependence.
 We ran SPsimSeq using the following options:
 
 ``` R
@@ -105,3 +107,13 @@ This is the same set of samples that were used in our simulation to determine th
 SPsimSeq was not run in the two example applications, DESeq2 and CYCLOPS, due to substantial differences in how it generates DE across samples compared to our method.
 DE in SPsimSeq is done by mimicking a random set of detected DE genes in the reference data set.
 SPsimSeq does not report either the group mean values or the log fold changes used for these genes, so we are not able to modify our own simulation to have the same set of DE genes at the same effect sizes.
+
+### Running vine copula
+
+We used the rvinecopulib package to fit and generate random data from a vine copula distribution.
+This package is a R wrapper of the high-performance vinecopulib C++ package.
+This package expects data normalized to the range of \[0, 1\].
+Therefore, we chose not to use the real RNA-seq count data and instead generated correlated random number as input which follow a multivariate normal distribution with covariance matrix constructed with a randomly generated singular vector matrix and singular values 1, 2, ..., 100.
+These values were then normalized to the interval \[0,1\] by the `pnorm` function.
+A vine copula was fit using just the "guassian" family.
+While rvinecopula supports multi-threaded operation, we ran using a single thread as with the other methods.
