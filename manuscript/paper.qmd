@@ -38,6 +38,17 @@ First, we show that variance of results from the popular DESeq2 method increases
 Second, we demonstrate that CYCLOPS, a method for inferring circadian time of collection from transcriptomics, improves in performance when given gene-gene dependencies in some circumstances.
 We provide an R package, dependentsimr, that has efficient implementations of these methods and can generate dependent data with arbitrary distributions, including discrete (binary, ordered categorical, Poisson, negative binomial), continuous (normal), or with an empirical distribution.
 
+## Author Summary
+
+Modern techniques, including high-throughput sequencing, produce more data than ever before.
+To determine the optimal computational analysis methods for these data, benchmarks are often performed using simulated data.
+This simulated data needs to closely match realistic data in order for benchmarking to meaningful.
+An often neglected aspect of this is that measurements of different values are often correlated or dependent upon each other.
+Two possible reasons for this neglect could be that there is a lack of guidelines on how to produce such data and also that methods to produce it are computationally expensive to run.
+We describe here three related methods that are both conceptually relatively simple and also highly computationally efficient.
+We demonstrated these on two applications which show how inclusion of these dependencies can affect the results of benchmarking.
+Lastly, we provide a software package to act as reference implementations of these.
+
 ## Introduction
 
 Omics data typically has far fewer samples than measurements per sample.
@@ -66,7 +77,7 @@ Copula approaches are flexible and have a long history [@Sklar] of use in fields
 More recently, copula approaches have been used for modelling or classification in multi-omics fields [@He_copula; @Ma_copula] and metagenomics [@Deek_microbiome].
 Projects simulating omics with copulas include SPsimSeq [@Assefa2020] and scDesign2 [@Sun2021].
 Some methods have employed the "vine copula" approach in the context of single-cell or spatial omics simulation [@fuetterer2019constructing; @scDesign3].
-This provides an alternative approach for choosing a copula that avoids the difficulty of choosing the covariance matrix, however it comes at significant computational cost when done at the omics-scale.
+This provides an alternative approach for choosing a copula which decomposes it into a set of 2-dimensional dependencies, however it comes at significant computational cost when done at the omics-scale.
 SeqNet uses instead a network approach for gene dependence [@SeqNet].
 
 Here, we describe three different strategies for determining covariance matrices, all of which enable efficient generation of simulated data due to following a specific form.
@@ -442,6 +453,7 @@ This implementation is efficient and simple, requiring just two lines of code to
 We demonstrated this package on RNA-seq data, using the DESeq2 method to fit negative binomial marginal distributions.
 However, this package is actually quite general and supports normal, Poisson, negative binomial, and arbitrary ordered discrete distributions using the empirical CDF.
 Moreover, it can support multi-modal data such as is increasingly common in multi-omics.
+In addition, the techniques described here are relatively simple to implement and we hope they can see broader adoption outside of our package.
 
 We highlight that our methods are highly efficient and easily scale to the large feature counts typical of omics data sets.
 While runtime of simulators is typically not critical, we hypothesize that it introduces an inconvenience that has slowed the adoption of dependence in omics simulation and could be particularly cumbersome whenever large numbers of simulated datasets are needed.
@@ -481,9 +493,14 @@ However, even this is computationally demanding; their paper references generati
 The `copula` package provides even more flexible dependence options through use of copulas.
 All of these packages provide more flexibility in specifying dependence than our package, which can only mimic existing datasets, and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.
 
+While we describe one special form of $\Sigma_{sim}$ where generation is highly efficient, there exist many other possiblecovariance matrix forms.
+Block diagonal covariance matrices are one such example which can efficiently represent even high-dimensional data [@Devijver02012018] and lend themselves to efficient simulation.
+Sparse matrix methods [@Bien2011-nx, @Bickel_sparse, @Cai_adaptive] yield exactly zero correlation between some variables, but it is less clear how to simulate data from these efficiently.
+Iterative sampling methods [@Krylov_subspaces] are one approach that could exploit the sparse nature and may even extend to sparse inverse covariance methods [@sparse_inverse_covariance].
+
 ## Data availability
 
-Source code for all simulations and figures in this plot is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
+Source code for all simulations and figures in this paper is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
 Source code for the `dependentsimr` package is available at [github.com/tgbrooks/dependent_sim](https://github.com/tgbrooks/dependent_sim/).
 All data used is available from the Gene Expression Omnibus (GEO) with accession numbers GSE151923, GSE81142, and GSE151565.
 
