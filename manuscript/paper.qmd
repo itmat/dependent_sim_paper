@@ -354,8 +354,8 @@ Since the sample covariance matrix is rank at most $n$, we again obtain a matrix
 This algorithm is:
 
 1. Compute the $\lambda_1$ and $\lambda_2$ values from `corpcor::estimate.lambda` and `corpcor::estimate.lambda.var` functions on $Z$, respectively.
-2. Set $D$ to be diagonal with $D_{ii} = \sqrt{\lambda_1} (\lambda_2 \sigma_{med} + (1 - \lambda_2) \sigma_i)$ where $\sigma_i$ is the standard deviation of the $Z_{i\cdot}$ and $\sigma_{med}$ is the median of the $\sigma_i$.
-3. Set $U$ to be $\sqrt{1-\lambda} S Z / \sqrt{n-1}$ where $S$ is the diagonal matrix with $S_{ii} = \lambda_2 \sigma_{med} / \sigma_i + (1 - \lambda_2)$.
+2. Set $D$ to be diagonal with $D_{ii}^2 = \lambda_1 (\lambda_2 \sigma_{med} + (1 - \lambda_2) \sigma_i)$ where $\sigma_i$ is the standard deviation of the $Z_{i\cdot}$ and $\sigma_{med}$ is the median of the $\sigma_i$.
+3. Set $U$ to be $\sqrt{1-\lambda_1} S Z / \sqrt{n-1}$ where $S$ is the diagonal matrix with $S_{ii}^2 = \lambda_2 \sigma_{med} / \sigma_i + (1 - \lambda_2)$.
 4. Set $W$ to the identity.
 
 ## Discussion
