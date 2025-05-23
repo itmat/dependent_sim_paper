@@ -49,78 +49,6 @@ readRDS("../../processed/compare_to_real_plot.GSE151565.RDS")
 
 ## Supplemental Methods
 
-Here, we provide an introduction to the Gaussian copula approach.
-
-### Multivariate normal distribution
-
-We first discuss the simplest case, where our dataset is multivariate normally distributed.
-The distribution $N(\mu, \Sigma)$ is the multivariate normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
-Here $\mu$ is a $p \times 1$ column vector and $\Sigma$ is a $p \times p$ matrix.
-In order for this to work, $\Sigma$ must be symmetric and positive semi-definite, meaning that all of its eigenvalues are non-negative. 
-This matrix is conceptually simple, since $\Sigma_{ij}$ gives the covariance of $x_i$ and $x_j$ when $x \sim N(\mu, \Sigma)$.
-More specifically, this is the population covariance matrix of $N(\mu, \Sigma)$, which does not generally equal the sample covariance matrix.
-Indeed, if $X$ is $n$ samples from $N(\mu, \Sigma)$, then $\widehat \Sigma := (X - \bar X) (X - \bar X)^T / (n - 1)$ is the sample covariance matrix where $\bar X$ is the average of the $n$ samples.
-For large $n$, $\widehat \Sigma$ will closely approximate $\Sigma$, but we care primarily about the situation where $n$ is small.
-In particular, $\widehat \Sigma$ is at most a rank $n - 1$ matrix while $\Sigma$ could be up to rank $p$.
-This means that $N(\mu, \widehat \Sigma)$ and $N(\mu, \Sigma)$ are quite different distributions: every sample from $N(\mu, \hat \Sigma)$ is contained in an $n-1$ dimensional plane.
-If $n$ is small, then this is very unlike real data, which typically is close to $p$ dimensional.
-
-The difficulty then is that we only know $\widehat \Sigma_{ref}$ from our reference dataset, but we need to choose a $\Sigma_{sim}$ with which we can simulate data and the obvious choice of $\widehat \Sigma_{ref}$ is inadequate.
-The most common choice is to assume $\Sigma_{sim}$ is a diagonal matrix.
-This is the situation we want to avoid where the generated data is independent: $x_i$ and $x_j$ have zero covariance unless $i = j$.
-However, this has some nice properties, such as being simple and fast to simulate (just generate univariate normal data for each variable).
-
-We describe three alternative approaches in Methods of how to choose a $\Sigma_{sim}$ that will produce data similar to the input data.
-All three of these rely on a specific form of $\Sigma$, namely that
-$$ \Sigma_{sim} = D^2 + UW^2U^T $$
-where $D$ is a $p \times p$ diagonal matrix, $U$ is $p \times k$ for some $k \ll p$ and $W$ is a diagonal $k \times k$ matrix.
-This is a combination of an independent part (the diagonal matrix) and a low-rank part ($U W^2 U^T$ is rank at most $k$).
-
-Generating data for $\Sigma_{sim}$ of this form is highly efficient.
-We use two basic facts about the multivariate distribution.
-First, if $A$ is a matrix and $u ~ N(0, \Sigma)$ then $Au ~ N(0, A \Sigma A^T)$.
-Second, if $u ~ N(0, \Sigma_1)$ and $v ~ N(0, \Sigma_2)$, then $u + v ~ N(0, \Sigma_1 + \Sigma_2)$.
-Therefore, given matrices $D, U, W$ and $u ~ N(0, I_k)$ and $v ~ N(0, I_p)$ (where $I_k$ and $I_p$ are the $k \times k$ and $p \times p$ identity matrices), then
-$$ D v + U W u ~ N(0, D^2 + UW^2 U^T) = N(0, \Sigma) $$
-as desired.
-
-In contrast, when given an arbitray $\Sigma$, to generate a random value in $N(0, \Sigma)$, one must compute a matrix $V$ such that $VV^T = W$.
-Then, using $v ~ N(0,I)$ , we have $Vv ~ N(0, \Sigma)$ as desired.
-However, computing $V$ is done using a Cholesky decomposition or eigenvector decomposition, both of which are computationally expensive when $\Sigma$ is large.
-
-Lastly, we emphasize that multivariate normal distributions do not capture all, or even most, types of possible dependence.
-Indeed, we see this even in the 2-dimensional case where it is well known that correlation describes only a linear relationship between two variables while in reality they may have much more complex relations.
-In higher dimensions, the problem is only worse.
-So any method based off multivariate normal distributions are making large assumptions about distribution.
-However, it is necessary to make some assumption like this.
-In the next section, though, we see that "normal" part is actually not a large obstacle. 
-
-### Gaussian copula
-
-Building on the multivariate normal distribution, a popular approach to describe dependence in a high-dimensional settings is called the Gaussian copula approach.
-The idea of this approach is that by applying a normalizing transform and later reversing the transformation, data that does not fit a normal distribution can still have its dependence structure described using a multivariate normal distribution.
-This allows the marginal (i.e., univariate) distributions of each genes to be specified separately from the dependence between genes.
-This operates first by transforming each gene by fitting a distribution (such as a normal distribution, Poisson, negative binomial, or other form), and then applying the fit cumulative distribution function (CDF) to the observed values.
-Finally, those are fed to a standard normal distribution's inverse CDF to obtain values that are approximately normally distributed.
-These values are then used to compute a covariance matrix $\Sigma$ and the data is assumed to follow a multivariate normal distribution in $p$ dimensions with that covariance matrix.
-
-Here, we describe the approach using the form of covariance matrix $\Sigma = D^2 + UW^2U^T$ as above.
-Once data is obtained $Z \sim N(0, \Sigma)$, then one can undo the normalizing transformation to obtain data with the same marginal distributions as the fit marginal distributions but with dependence determined by $\Sigma$.
-We describe this in detail:
-
-1.  Fit marginal distributions to each feature in $X$ to determine CDFs $F_{i}$ for each feature.
-2.  Apply normalizing transform to $X$ by setting $Z_{ij} = \Phi^{-1}(F_{i}(X_{ij}))$ where $\Phi$ is the CDF of the standard normal distribution.
-3.  Compute $D$, $U$, $W$ matrices from $X$ by one of three methods (see Methods).
-4.  Generate $k$ i.i.d. standard normally distributed values $u$ and $p$ i.i.d standard normally distributed values $v$.
-5.  Set $z' = UWu + D v$.
-6.  Output the vector $x'$ where $x'_i = F_i^{-1}(\Phi(z'))$.
-
-The generated data vector $z'$ has covariance matrix $\Sigma_{sim} = D^2 + U W^2 U^T$.
-Moreover, we require that $\Sigma$ satisfies that $\left(\Sigma_{sim}\right)_{ii}$ is approximately 1 for each $i$.
-That guarantees that the output $x'$ has each entry with the same marginal distributions $F_i$ as was originally fit and inherits gene-gene dependence from $Z'$.
-This method is computationally efficient, taking hardly any more time or memory than simulations without dependence.
-
-
 ### Running SPsimSeq
 
 The R package SPsimSeq [@Assefa2020] provides a dedicated RNA-seq and single-cell RNA-seq simulator using a Gaussian copula approach to simulate gene dependence.
@@ -156,9 +84,9 @@ SPsimSeq does not report either the group mean values or the log fold changes us
 
 We used the rvinecopulib package to fit and generate random data from a vine copula distribution.
 This package is a R wrapper of the high-performance vinecopulib C++ package.
-This package expects data normalized to the range of \[0, 1\].
+This package expects data scaled to the range of \[0, 1\].
 Therefore, we chose not to use the real RNA-seq count data and instead generated correlated random number as input which follow a multivariate normal distribution with covariance matrix constructed with a randomly generated singular vector matrix and singular values 1, 2, ..., 100.
-These values were then normalized to the interval \[0,1\] by the `pnorm` function.
+These values were then scaled to the interval \[0,1\] by the `pnorm` function.
 A vine copula was fit using just the "guassian" family.
 While rvinecopula supports multi-threaded operation, we ran using a single thread as with the other methods.
 
