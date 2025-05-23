@@ -335,14 +335,29 @@ rule simulate_vinecopula_for_benchmark:
     script:
         "scripts/vinecopulib.benchmark.R"
 
+rule simulate_mvrnorm_for_benchmark:
+    input:
+        "processed/Cortex_ZT0-counts.csv",
+        sif = "images/spsimseq.sif",
+    output:
+        "processed/benchmark/mvrnorm/{n_genes}.txt"
+    resources:
+        mem_mb = 60_000,
+    benchmark:
+        "processed/benchmark/mvrnorm/{n_genes}.benchmark.txt"
+    container:
+        "images/spsimseq.sif"
+    script:
+        "scripts/mvrnorm.benchmark.R"
+
 rule benchmark:
     input:
         results = expand("processed/benchmark/{method}/{n_genes}.txt",
-            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula"],
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm"],
             n_genes = [500, 1000, 2000, 4000, 8000, 16000, 32000],
         ),
         benchmarks = expand("processed/benchmark/{method}/{n_genes}.benchmark.txt",
-            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula"],
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm"],
             n_genes = [500, 1000, 2000, 4000, 8000, 16000, 32000],
         )
     output:

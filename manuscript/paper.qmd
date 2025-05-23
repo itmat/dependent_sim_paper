@@ -92,21 +92,23 @@ To do this, we need to capture correlations between the $p$ features, which coul
 We refer to these features as genes for simplicity.
 
 Our methods are based off the well-known Gaussian copula method, which uses a multivariate normal distribution to capture aspects of the gene-gene dependence, without necessarily assuming that the data is normally distributed.
+See @fig-intro a for a high-level overview.
 This multivariate normal distribution is parameterized by a $p \times p$ covariance matrix, $\Sigma$.
 In omics, choosing the covariance matrix $\Sigma_{sim}$ to use during simulation presents a challenge since $n < p$.
 The most obvious choice is to use the sample covariance matrix $\widehat \Sigma_{ref}$ of the reference dataset (possibly after some transformation of the data).
 However, using $\widehat \Sigma_{ref}$ is a poor choice for $\Sigma_{sim}$.
 Indeed, we consider a choice of $\Sigma_{sim}$ to be successful if datasets of $n$ samples simulated using $\Sigma_{sim}$ have sample covaraince matrices $\widehat \Sigma_{sim}$ that are similar to $\widehat \Sigma_{ref}$.
-Counter-intuitively, data simulated using $\Sigma_{sim} := \widehat \Sigma_{ref}$ have sample covariance matrices that systematically and substantially differ from $\widehat \Sigma_{ref}$, see @fig-intro.
+Counter-intuitively, data simulated using $\Sigma_{sim} := \widehat \Sigma_{ref}$ have sample covariance matrices that systematically and substantially differ from $\widehat \Sigma_{ref}$, see @fig-intro b.
 
 ```{r}
 #| label: fig-intro
-#| fig-cap: "Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{ref}$ of reference data compared to $\\widehat \\Sigma_{sim}$ from from simulated data using $\\Sigma_{sim} = \\widehat \\Sigma$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest."
-#| fig-width: 5
-#| fig-height: 4
+#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{ref}$ of reference data compared to $\\widehat \\Sigma_{sim}$ from simulated data using $\\Sigma_{sim} = \\widehat \\Sigma_{ref}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods, SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
+#| fig-width: 8
+#| fig-height: 5
 
 library(MASS)
 library(tidyverse)
+library(patchwork)
 
 # create reference aka 'real' dataset
 temp <- matrix(rnorm(100*100), 100, 100)
@@ -138,10 +140,39 @@ for (i in 1:20) {
 eigenvalue_data <- bind_rows(temp)
 
 # Plot the eigenvalues
-ggplot(eigenvalue_data |> filter(type != "reference"), aes(x=number, y = eigenvalue, color = type, group=iter)) +
+gsigma <- ggplot(eigenvalue_data |> filter(type != "reference"), aes(x=number, y = eigenvalue, color = type, group=iter)) +
   geom_line(linewidth=2, alpha=0.5) +
   geom_line(data = eigenvalue_data |> filter(type == "reference"), linewidth=4) +
   labs(x = "eigenvalue number", y = "eigenvalue")
+
+# diagram
+gdiagram <- ggplot() +
+    annotation_custom(grid::rasterGrob(png::readPNG("diagram.png")), xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf) +
+    theme(panel.background = element_blank())
+
+# Plot benchmarking
+METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm")
+METHOD_COLORS <- c("black", RColorBrewer::brewer.pal(length(METHOD_ORDER)-1, "Dark2"))
+benchmark <- read_tsv("../processed/benchmark/results.txt") |>
+    filter(method != "indep") |> # We don't want to compare indep for this, whose runtime hasn't been optimized anyway
+    filter(!is.na(time)) # drop the ones that aren't run completely due to time/memory constraints
+
+g1 <- ggplot(benchmark, aes(x=n_genes, y=time, color=method)) +
+    geom_line(linewidth=2) +
+    labs(x = "N genes", y = "time (seconds)") + 
+    scale_color_manual(values = METHOD_COLORS, breaks = METHOD_ORDER, name="method") +
+    scale_x_log10() +
+    scale_y_log10() +
+    coord_cartesian(ylim=c(3,10000))
+g2 <- ggplot(benchmark, aes(x=n_genes, y=max_vms / 1000, color=method)) +
+    geom_line(linewidth=2) +
+    labs(x = "N genes", y = "memory (GB)") +
+    scale_color_manual(values = METHOD_COLORS, breaks = METHOD_ORDER, name="method") +
+    scale_x_log10() +
+    scale_y_log10() +
+    coord_cartesian(ylim=c(0.600,100))
+
+(gdiagram) / (gsigma + g1 + g2 + plot_layout(guides = "collect")) + plot_annotation(tag_levels="a") + plot_layout(heights=c(1,1.5))
 ```
 
 
@@ -155,68 +186,8 @@ We therefore need to "inject" some level of additional randomness that is indepe
 We present three methods - called here PCA, spiked Wishart, and corpcor - for making this choice of $\Sigma_{sim}$, all which take the form
 $$ \Sigma_{sim} = D^2 + UW^2U^T $$
 where $D$ is a diagonal matrix capturing the injected independence and $UW^2U^T$ is a low-rank correlation matrix derived from $\widehat \Sigma_{ref}$.
-An additional advantage of this special form is that data may be generated very efficiently, Supplemental Figure S3 and see Methods, compared to arbitrary $\Sigma_{sim}$ which typically require a Cholesky or eigenvalue decomposition.
-
-### Multivariate normal distribution
-
-We first discuss the simplest case, where our dataset is multivariate normally distributed.
-The distribution $N(\mu, \Sigma)$ is the multivariate normal distribution with mean vector $\mu$ and covariance matrix $\Sigma$.
-Here $\mu$ is a $p \times 1$ column vector and $\Sigma$ is a $p \times p$ matrix.
-In order for this to work, $\Sigma$ must be symmetric and positive semi-definite, meaning that all of its eigenvalues are non-negative. 
-This matrix is conceptually simple, since $\Sigma_{ij}$ gives the covariance of $x_i$ and $x_j$ when $x \sim N(\mu, \Sigma)$.
-More specifically, this is the population covariance matrix of $N(\mu, \Sigma)$, which does not generally equal the sample covariance matrix.
-Indeed, if $X$ is $n$ samples from $N(\mu, \Sigma)$, then $\hat \Sigma := (X - \bar X) (X - \bar X)^T / (n - 1)$ is the sample covariance matrix where $\bar X$ is the average of the $n$ samples.
-For large $n$, $\hat \Sigma$ will closely approximate $\Sigma$, but we care primarily about the situation where $n$ is small.
-In particular, $\hat \Sigma$ is at most a rank $n - 1$ matrix while $\Sigma$ could be up to rank $p$.
-This means that $N(\mu, \hat \Sigma)$ and $N(\mu, \Sigma)$ are quite different distributions: every sample from $N(\mu, \hat \Sigma)$ is contained in an $n-1$ dimensional plane.
-If $n$ is small, then this is very unlike real data, which typically is close to $p$ dimensional.
-
-The difficulty then is that we only know $\hat \Sigma$ from our reference dataset, but we need to choose a $\Sigma$ with which we can simulate data and the obvious choice of $\hat \Sigma$ is inadequate.
-The most common choice is to assume $\Sigma$ is a diagonal matrix.
-This is the situation we want to avoid where the generated data is independent: $x_i$ and $x_j$ have zero covariance unless $i = j$.
-However, this has some nice properties, such as being simple and fast to simulate (just generate univariate normal data for each variable).
-
-We describe three alternative approaches in Methods of how to choose a $\Sigma$ that will produce data similar to the input data.
-All three of these rely on a specific form of $\Sigma$, namely that
-$$ \Sigma = D^2 + UW^2U^T $$
-where $D$ is a $p \times p$ diagonal matrix, $U$ is $p \times k$ for some $k \ll p$ and $W$ is a diagonal $k \times k$ matrix.
-This is a combination of an independent part (the diagonal matrix) and a low-rank part ($U W^2 U^T$ is rank at most $k$).
-The low-rank part is also simple to generate data for.
-If $x$ is a vector of $k$ independent univariate standard normal values, then $U W x \sim N(0, P P^T)$.
-The choice of specific $D$, $U$, $W$ matrices is more in-depth and we leave the details for the Methods section.
-We have three alternative means for doing so, which we refer to as the PCA, spiked Wishart, and corpcor methods.
-
-Lastly, we emphasize that multivariate normal distributions do not capture all, or even most, types of possible dependence.
-Indeed, we see this even in the 2-dimensional case where it is well known that correlation describes only a linear relationship between two variables while in reality they may have much more complex relations.
-In higher dimensions, the problem is only worse.
-So any method based off multivariate normal distributions are making large assumptions about distribution.
-However, it is necessary to make some assumption like this.
-In the next section, though, we see that "normal" part is actually not a large obstacle. 
-
-### Gaussian copula
-
-Building on the multivariate normal distribution, a popular approach to describe dependence in a high-dimensional settings is called the Gaussian copula approach.
-The idea of this approach is that by normalizing and later reversing the normalization, data that does not fit a normal distribution can still have its dependence structure described using a multivariate normal distribution.
-This allows the marginal (i.e., univariate) distributions of each genes to be specified separately from the dependence between genes.
-This operates first by normalizing each gene by fitting a distribution (such as a normal distribution, Poisson, negative binomial, or other form), and then applying the fit cumulative distribution function (CDF) to the observed values.
-Finally, those are fed to a standard normal distribution's inverse CDF to obtain values that are approximately normally distributed.
-These values are then used to compute a covariance matrix $\Sigma$ and the data is assumed to follow a multivariate normal distribution in $p$ dimensions with that covariance matrix.
-
-Here, we describe the approach using the form of covariance matrix $\Sigma = D^2 + UW^2U^T$ as above.
-Once data is obtained $Z \sim N(0, \Sigma)$, then one can undo the normalization process to obtain data with the same marginal distributions as the fit marginal distributions but with dependence determined by $\Sigma$.
-We describe this in detail:
-
-1.  Fit marginal distributions to each feature in $X$ to determine CDFs $F_{i}$ for each feature.
-2.  Transform $X$ to normalized values by $Z_{ij} = \Phi^{-1}(F_{i}(X_{ij}))$ where $\Phi$ is the CDF of the standard normal distribution.
-3.  Compute $D$, $U$, $W$ matrices from $X$ by one of three methods (see Methods).
-4.  Generate $k$ i.i.d. standard normally distributed values $u$ and $p$ i.i.d standard normally distributed values $v$.
-5.  Set $Z' = UWu + D v$.
-6.  Output the vector $X'$ where $X'_i = F_i^{-1}(\Phi(Z'))$.
-
-The generated data $Z'$ has covariance matrix $\Sigma_{sim} = D^2 + U W U^T = D^2 + U W^2 U^T$.
-Moreover, we require that $\Sigma$ satisfies that $(\Sigma_{sim})_{ii}$ is approximately 1.
-That guarantees that the output $X'$ has each entry with the same marginal distributions $F_i$ as was originally fit and inherits gene-gene dependence from $Z'$.
-This method is computationally efficient, taking hardly any more time or memory than simulations without dependence.
+An additional advantage of this special form is that data may be generated very efficiently, @fig-intro b,c, compared to arbitrary $\Sigma_{sim}$ which typically require a Cholesky or eigenvalue decomposition.
+Specifically, random samples are generated using the fact that if $u,v$ are independent vectors with iid standard normal entries, then $Dv + UWu$ has covariance matrix equal to $D^2 + UW^2U^T$.
 
 ### Comparison to real data
 
@@ -330,7 +301,7 @@ Below, we describe the three methods for selecting the components of the covaria
 
 ###  PCA method
 
-The first of our three methods attempts to match the top $k$ PCA components of the normalized reference dataset $Z$.
+The first of our three methods attempts to match the top $k$ PCA components of $Z$, the reference data set after applying the normalizing transform.
 Specifically, let $u_1, \ldots, u_k$ be the left singular vectors of $Z$ with $\lambda_1, \ldots, \lambda_k$ the corresponding top $k$ singular values.
 This method computes $\Sigma_{sim}$ such that $u_i^T \Sigma_{sim} u_i = \lambda_i^2$, i.e. that the variance in the direction of $u_i$ exactly matches of the reference dataset's variance in that same direction.
 One solution is to use the sample covariance matrix, but that is not full rank and would match for all $i \leq n$ instead of just $i \leq k$.
@@ -357,13 +328,13 @@ The spiked Wishart is the special case where $\Sigma_{sim}$ has $k$ arbitrary ei
 Note that the singular values of $Z$ are the square roots of the eigenvalues of $\widehat \Sigma_{ref}.
 While our case has $\Sigma_{sim}$ non-diagonal, $\Sigma_{sim}$ may be diagonalized by orthogonal rotations due the spectral theorem, and orthogonal rotations do not change the singular values of $Z$.
 Therefore, the distribution of singular values is not affected by the assumption that $\Sigma_{sim}$ is diagonal.
-Moreover, for the form $\Sigma_{sim} = D^2 + U W^2 U^T$ where $p$ is very large, each column of $U$ is typically very close to orthogonal to any $e_i$, a standard basis vector.
-Therefore, when $D = c^2I$ for some constant $c$, we can approximate $\Sigma_{sim}$ as having $k$ arbitrary eigenvalues from $W^2$ and $n$ remaining eigenvalues all equal to $c^2$ corresponding to $D$.
+Moreover, for the form $\Sigma_{sim} = D^2 + U W^2 U^T$ where $p$ is very large, each column of $U$ is typically very close to orthogonal to any standard basis vector.
+Therefore, when $D = cI$ for some constant $c$, we can approximate $\Sigma_{sim}$ as having $k$ arbitrary eigenvalues from $W^2$ and $n$ remaining eigenvalues all equal to $c^2$.
 This is a spiked Wishart distribution.
 
 However, the spiked Wishart distribution also has no known analytic solution for the distribution of its eigenvalues either.
 Therefore, we use an efficient sampling and stochastic gradient descent method that we recently described [@wishart].
-Since the dataset has been normalized, $c$ will be close to one and $e_i \Sigma_{sim} e_i^T \approx 1$.
+Since the normalizing transform has been applied, $c$ will be close to one and $\left(\Sigma_{sim}\right)_{ii} \approx 1$ for each $i$.
 
 Specifically, we do:
 
