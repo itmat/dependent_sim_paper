@@ -113,9 +113,9 @@ Counter-intuitively, data simulated using $\Sigma_{sim} := \widehat \Sigma_{ref}
 
 ```{r}
 #| label: fig-intro
-#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{ref}$ of reference data compared to $\\widehat \\Sigma_{sim}$ from simulated data using $\\Sigma_{sim} = \\widehat \\Sigma_{ref}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods, SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
+#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. The goal is to pick $\\Sigma_{sim}$ so that $\\widehat \\Sigma_{sim} \\approx \\widehat \\Sigma_{ref}$ while using a special, highly efficient form. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{ref}$ of reference data compared to $\\widehat \\Sigma_{sim}$ from simulated data using $\\Sigma_{sim} = \\widehat \\Sigma_{ref}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods (pca, wishart, coprcor), SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
 #| fig-width: 8
-#| fig-height: 5
+#| fig-height: 6
 
 library(MASS)
 library(tidyverse)
@@ -183,7 +183,7 @@ g2 <- ggplot(benchmark, aes(x=n_genes, y=max_vms / 1000, color=method)) +
     scale_y_log10() +
     coord_cartesian(ylim=c(0.600,100))
 
-(gdiagram) / (gsigma + g1 + g2 + plot_layout(guides = "collect")) + plot_annotation(tag_levels="a") + plot_layout(heights=c(1,1.5))
+(gdiagram) / ((gsigma + g1 + g2) + plot_layout(guides = "collect")) + plot_annotation(tag_levels="a") + plot_layout(heights=c(1.2,1))
 ```
 
 
