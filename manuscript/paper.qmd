@@ -338,14 +338,14 @@ This is a combination of an independent part (the diagonal matrix) and a low-ran
 
 Generating data for $\Sigma_{sim}$ of this form is highly efficient.
 We use two basic facts about the multivariate distribution.
-First, if $A$ is a matrix and $u ~ N(0, \Sigma)$ then $Au ~ N(0, A \Sigma A^T)$.
-Second, if $u ~ N(0, \Sigma_1)$ and $v ~ N(0, \Sigma_2)$, then $u + v ~ N(0, \Sigma_1 + \Sigma_2)$.
-Therefore, given matrices $D, U, W$ and $u ~ N(0, I_k)$ and $v ~ N(0, I_p)$ (where $I_k$ and $I_p$ are the $k \times k$ and $p \times p$ identity matrices), then
-$$ D v + U W u ~ N(0, D^2 + UW^2 U^T) = N(0, \Sigma) $$
+First, if $A$ is a matrix and $u \sim N(0, \Sigma)$ then $Au \sim N(0, A \Sigma A^T)$.
+Second, if $u \sim N(0, \Sigma_1)$ and $v \sim N(0, \Sigma_2)$, then $u + v \sim N(0, \Sigma_1 + \Sigma_2)$.
+Therefore, given matrices $D, U, W$ and $u \sim N(0, I_k)$ and $v \sim N(0, I_p)$ (where $I_k$ and $I_p$ are the $k \times k$ and $p \times p$ identity matrices), then
+$$ D v + U W u \sim N(0, D^2 + UW^2 U^T) = N(0, \Sigma) $$
 as desired.
 
 In contrast, when given an arbitrary $\Sigma$, to generate a random value in $N(0, \Sigma)$, one must compute a matrix $V$ such that $VV^T = \Sigma$.
-Then, using $v ~ N(0,I)$ , we have $Vv ~ N(0, \Sigma)$ as desired.
+Then, using $v \sim N(0,I)$ , we have $Vv \sim N(0, \Sigma)$ as desired.
 However, computing $V$ is done using a Cholesky decomposition or eigenvector decomposition, both of which are computationally expensive when $\Sigma$ is large.
 
 Lastly, we emphasize that multivariate normal distributions do not capture all, or even most, types of possible dependence.
