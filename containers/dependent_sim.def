@@ -1,13 +1,12 @@
 Bootstrap: docker
-From: r-base:4.3.1
+From: rocker/tidyverse:4.3
 
 %post
     apt-get update
-    #apt-get install -y libcurl4-openssl-dev libbz2-dev liblzma-dev libssl-dev
     apt-get install -y r-cran-tidyverse r-cran-remotes r-bioc-deseq2 r-cran-mass r-cran-testthat
 
     R -e 'remotes::install_github("tgbrooks/dependent_sim")'
     R -e 'install.packages(c("corpcor", "sparsesvd"))'
 
 %help
-    R 4.3.1 with the dependent_sim package and other utilities installed.
+    R 4.3 with the dependent_sim package and other utilities installed.

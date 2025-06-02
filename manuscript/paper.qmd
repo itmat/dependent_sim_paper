@@ -238,6 +238,8 @@ Like PCA, the SPsimSeq simulator, overshot the first PCA component but did a bet
 readRDS("../processed/compare_to_real_plot.GSE151923.RDS")
 ```
 
+We further demonstrate our methods on a different data type, metabolomics, where we use normal marginal distributions and with far fewer features measured (42), see Supplemental Figure 3.
+
 ### DESeq2 application
 
 We benchmarked DESeq2 [@Love2014], a popular differential expression analysis tool, using datasets simulated with dependence and ones simulated without dependence to compare its performances on both.
@@ -458,8 +460,9 @@ In addition, the techniques described here are relatively simple to implement an
 
 We highlight that our methods are highly efficient and easily scale to the large feature counts typical of omics data sets.
 While runtime of simulators is typically not critical, we hypothesize that it introduces an inconvenience that has slowed the adoption of dependence in omics simulation and could be particularly cumbersome whenever large numbers of simulated datasets are needed.
-Of note is that alternative methods are typically run with only a subset of genes chosen, for example, 500-200 genes for scDesign2 [@Sun2021], 1000 genes for scDesign3 [@scDesign3], and 621 for SeqNet [@SeqNet].
-In contrast, our methods can operate on the entire space of genes, avoiding an arbitrary choice of cutoff, though it should be noted that correlation is most meaningful in high-expressed, high variance genes so subsetting genes is also a reasonable approach.
+Moreover, high memory use of the alternatives could be an even larger barrier than run-time.
+Of note is that alternative methods are typically run with only a subset of genes chosen, for example, 500-200 genes for scDesign2 [@Sun2021], 1000 genes for scDesign3 [@scDesign3], and 621 for SeqNet [@SeqNet], presumably due to the resource requirements.
+In contrast, our methods can operate on the entire space of genes, avoiding an arbitrary choice of cutoff, though it should be noted that correlation is most meaningful in high-expressed, high variance genes and so subsetting genes is a reasonable approach.
 
 We demonstrated the importance of including gene-gene dependence in simulated data by two application benchmarks.
 In the first, DESeq2 results were substantially more variable when simulating with gene-gene dependence.
@@ -493,7 +496,7 @@ However, even this is computationally demanding; their paper references generati
 The `copula` package provides even more flexible dependence options through use of copulas.
 All of these packages provide more flexibility in specifying dependence than our package, which can only mimic existing datasets, and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.
 
-While we describe one special form of $\Sigma_{sim}$ where generation is highly efficient, there exist many other possiblecovariance matrix forms.
+While we describe one special form of $\Sigma_{sim}$ where generation is highly efficient, there exist many other possible covariance matrix forms.
 Block diagonal covariance matrices are one such example which can efficiently represent even high-dimensional data [@Devijver02012018] and lend themselves to efficient simulation.
 Sparse matrix methods [@Bien2011-nx, @Bickel_sparse, @Cai_adaptive] yield exactly zero correlation between some variables, but it is less clear how to simulate data from these efficiently.
 Iterative sampling methods [@Krylov_subspaces] are one approach that could exploit the sparse nature and may even extend to sparse inverse covariance methods [@sparse_inverse_covariance].
@@ -502,7 +505,8 @@ Iterative sampling methods [@Krylov_subspaces] are one approach that could explo
 
 Source code for all simulations and figures in this paper is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
 Source code for the `dependentsimr` package is available at [github.com/tgbrooks/dependent_sim](https://github.com/tgbrooks/dependent_sim/).
-All data used is available from the Gene Expression Omnibus (GEO) with accession numbers GSE151923, GSE81142, and GSE151565.
+All sequencing data used is available from the Gene Expression Omnibus (GEO) with accession numbers GSE151923, GSE81142, and GSE151565.
+Metabolomics data was obtained from MetaboAnalyst (https://www.metaboanalyst.ca/MetaboAnalyst/upload/RocUploadView.xhtml).
 
 ## Funding statement and competing interests
 

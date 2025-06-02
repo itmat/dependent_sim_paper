@@ -17,43 +17,6 @@ TYPE_ORDER <- c("real", "indep", "pca", "wishart", "corpcor")
 TYPE_COLORS <- c("black", RColorBrewer::brewer.pal(length(TYPE_ORDER)-1, "Dark2"))
 
 # Load the real data ---------------------------------
-# raw <- read_tsv("../data/GSE151923_metaReadCount_ensembl.txt.gz") |>
-#   select(-GeneName, -Description, -Chromosome, -Strand)
-# read_counts <- as.matrix(raw[,2:13])
-# rownames(read_counts) <- raw[[1]]
-# 
-# actual_library_sizes <- apply(read_counts, 2, sum)
-# 
-# # Run dependentsimr on this data --------------------
-# N_SAMPLES <- 96
-# library_sizes <- (actual_library_sizes + rep(0, N_SAMPLES)) / mean(actual_library_sizes) # Recycle the existing library sizes
-# # Simulate with the PCA method
-# rs <- get_random_structure(list(counts=read_counts), method="pca", rank=2, type="DESeq2")
-# draws <- draw_from_multivariate_corr(rs, n_samples=N_SAMPLES, size_factors=library_sizes)$counts
-# 
-# # Simulate with the corpcor method
-# rs_corpcor <- get_random_structure(list(counts=read_counts), method="corpcor", type="DESeq2")
-# draws_corpcor <- draw_from_multivariate_corr(rs_corpcor, n_samples=N_SAMPLES, size_factors=library_sizes)$counts
-# 
-# # Simulate with the spiked Wishart method
-# rs_wishart <- get_random_structure(list(counts=read_counts), rank=11, method="spiked Wishart", type="DESeq2")
-# draws_wishart <- draw_from_multivariate_corr(rs_wishart, n_samples=N_SAMPLES, size_factors=library_sizes)$counts
-# 
-# # Simulate without any dependence
-# rs_indep <- remove_dependence(rs)
-# indep_draws <- draw_from_multivariate_corr(rs_indep, n_samples=N_SAMPLES, size_factors=library_sizes)$counts
-# 
-# 
-# # Scale to Counts Per Million ------------------------
-# cpm <- function(x) { # counts per million
-#   return(t(t(x) / apply(x, 2, sum) * 1e6))
-# }
-# scaled_read_data <- cpm(read_counts)
-# scaled_draws <- cpm(draws)
-# scaled_draws_corpcor <- cpm(draws_corpcor)
-# scaled_draws_wishart <- cpm(draws_wishart)
-# scaled_indep_draws <- cpm(indep_draws)
-
 scaled_read_data <- read_csv("data/Plasma_metabolomics_real.csv")
 scaled_draws <- read_delim("simulated_data/Plasma_metabolomics.pca.txt", delim = '\t') |> 
     select(-Metabolites) |> 
@@ -194,3 +157,6 @@ g5 <- ggplot() +
   theme(axis.text.x = element_text(angle=90))
 
 compare_to_real_plot <- (g1 | g2) / (g3 | g4) / (g5) + plot_annotation(tag_levels="a")
+
+saveRDS(compare_to_real_plot, paste0("processed/compare_to_real_plot_metabolomics.RDS"))
+ggsave(paste0("results/compare_to_real_plot_metabolomics.png"), width=10, height=10)

@@ -4,7 +4,8 @@ input_data_urls = {
     "GSE81142.counts.txt.gz": "https://s3.amazonaws.com/itmat.data/tom/dependent_sim_paper/GSE81142.counts.txt.gz",
     "GSE81142_family.soft.gz": "ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE81nnn/GSE81142/soft/GSE81142_family.soft.gz",
     "BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz": "https://s3.amazonaws.com/itmat.data/BHTC_JTK_RESULTS/BHTC.All_tissues.JTK_only.24h_period.MetaCycle_results.txt.gz",
-    "GSE151565_Cortex-counts.csv.gz": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151565/suppl/GSE151565%5FCortex%2Dcounts.csv.gz"
+    "GSE151565_Cortex-counts.csv.gz": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE151nnn/GSE151565/suppl/GSE151565%5FCortex%2Dcounts.csv.gz",
+    "plasma_nmr.csv": "https://api2.xialab.ca/api/download/metaboanalyst/plasma_nmr.csv",
 }
 soft_metadata_attributes = {
   "GSE151923": {
@@ -161,6 +162,7 @@ rule simulate_mouse_spsimseq:
 rule simulate_mouse_timeseries_spsimseq:
     input:
         "data/GSE151565_Cortex-counts.csv.gz",
+        "processed/Cortex_ZT0-counts.csv",
         sif = ancient("images/spsimseq.sif"),
     output:
         "simulated_data/SPsimSeq.GSE151565.txt",
@@ -192,6 +194,17 @@ rule sim_de:
         "images/dependent_sim.sif",
     script:
         "scripts/simDE.R"
+
+rule simulate_metabolomics:
+    input:
+        "data/plasma_nmr.csv",
+        sif = "images/dependent_sim.sif",
+    output:
+        "simulated_data/Plasma_metabolomics.{method}.txt"
+    container:
+        "images/dependent_sim.sif"
+    script:
+        "scripts/simulate_metabolomics.R"
 
 rule process_time_series:
     input:
@@ -290,6 +303,17 @@ rule compare_to_real:
     script:
         "scripts/compare_to_real.R"
 
+rule compare_to_real_metabolomics:
+    input:
+        expand("simulated_data/Plasma_metabolomics.{method}.txt", method = ["indep", "pca", "corpcor", "wishart"]),
+        sif = "images/quarto.sif",
+    output:
+        "processed/compare_to_real_plot_metabolomics.RDS"
+    container:
+        "images/quarto.sif",
+    script:
+        "scripts/compare_to_real_metabolomics.R"
+
 rule simulate_for_benchmark:
     input:
         "processed/Cortex_ZT0-counts.csv",
@@ -323,7 +347,7 @@ rule simulate_spsimseq_for_benchmark:
 rule simulate_vinecopula_for_benchmark:
     input:
         "processed/Cortex_ZT0-counts.csv",
-        sif = "images/spsimseq.sif",
+        sif = ancient("images/spsimseq.sif"),
     output:
         "processed/benchmark/vinecopula/{n_genes}.txt"
     resources:
@@ -338,7 +362,7 @@ rule simulate_vinecopula_for_benchmark:
 rule simulate_mvrnorm_for_benchmark:
     input:
         "processed/Cortex_ZT0-counts.csv",
-        sif = "images/spsimseq.sif",
+        sif = ancient("images/spsimseq.sif"),
     output:
         "processed/benchmark/mvrnorm/{n_genes}.txt"
     resources:
@@ -388,6 +412,7 @@ rule generate_supplemental:
     input:
         "processed/compare_to_real_plot.GSE81142.RDS",
         "processed/compare_to_real_plot.GSE151565.RDS",
+        "processed/compare_to_real_plot_metabolomics.RDS",
         "processed/benchmark/results.txt",
         index = "manuscript/supplemental/supplemental.qmd",
         sif = "images/quarto.sif",
