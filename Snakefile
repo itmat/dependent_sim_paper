@@ -209,7 +209,7 @@ rule simulate_metabolomics:
 rule process_time_series:
     input:
         "data/GSE151565_Cortex-counts.csv.gz",
-        "images/dependent_sim.sif",
+        ancient("images/dependent_sim.sif"),
     output:
         "processed/mean_per_time_Cortex.csv",
         "processed/Cortex_normalized_time_series_data.csv",

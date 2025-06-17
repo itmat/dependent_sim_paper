@@ -2,11 +2,9 @@ Bootstrap: docker
 From: rocker/tidyverse:4.3
 
 %post
-    apt-get update
-    apt-get install -y r-cran-tidyverse r-cran-remotes r-bioc-deseq2 r-cran-mass r-cran-testthat
-
     R -e 'remotes::install_github("tgbrooks/dependent_sim")'
-    R -e 'install.packages(c("corpcor", "sparsesvd"))'
+    R -e 'install.packages(c("corpcor", "sparsesvd", "MASS"))'
+    R -e 'BiocManager::install("DESeq2")'
 
 %help
     R 4.3 with the dependent_sim package and other utilities installed.
