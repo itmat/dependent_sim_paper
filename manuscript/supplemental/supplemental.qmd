@@ -49,7 +49,7 @@ readRDS("../../processed/compare_to_real_plot.GSE151565.RDS")
 
 ```{r}
 #| label: fig-compare-to-real3
-#| fig-cap: "Comparison to plasma metabolomics data set, obtained from MetaboAnalyst (https://www.metaboanalyst.ca/MetaboAnalyst/upload/RocUploadView.xhtml). Methods were run using normal marginal distributions. Unlike other examples, this included more samples (59) than measured features (42 metabolites), demonstrating that these methods also work in that case."
+#| fig-cap: "Comparison to plasma metabolomics data set, obtained from MetaboAnalyst (https://www.metaboanalyst.ca/MetaboAnalyst/upload/RocUploadView.xhtml). Methods were run using normal marginal distributions. Unlike other examples, this included more samples (59) than measured features (42 metabolites), demonstrating that these methods also work in that case. Data were log-scaled prior to simulation."
 #| fig-width: 10
 #| fig-height: 10
 readRDS("../../processed/compare_to_real_plot_metabolomics.RDS")

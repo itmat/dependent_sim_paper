@@ -12,12 +12,12 @@ library(rlang)
 set.seed(55)
 
 # CONFIGURATION
-HIGH_EXPR_CUTOFF <- 1
 TYPE_ORDER <- c("real", "indep", "pca", "wishart", "corpcor")
 TYPE_COLORS <- c("black", RColorBrewer::brewer.pal(length(TYPE_ORDER)-1, "Dark2"))
 
 # Load the real data ---------------------------------
-scaled_read_data <- read_csv("data/Plasma_metabolomics_real.csv")
+scaled_read_data <- read_csv("processed/Plasma_metabolomics_real.csv") |>
+    as.matrix()
 scaled_draws <- read_delim("simulated_data/Plasma_metabolomics.pca.txt", delim = '\t') |> 
     select(-Metabolites) |> 
     as.matrix()
@@ -33,8 +33,8 @@ scaled_indep_draws <- read_delim("simulated_data/Plasma_metabolomics.indep.txt",
 
 ## Generate the figures
 
-simulated_mean <- apply(scaled_draws[,1:ncol(read_counts)], 1, mean)
-simulated_variance <- apply(scaled_draws[,1:ncol(read_counts)], 1, var)
+simulated_mean <- apply(scaled_draws[,1:ncol(scaled_read_data)], 1, mean)
+simulated_variance <- apply(scaled_draws[,1:ncol(scaled_read_data)], 1, var)
 real_mean <- apply(scaled_read_data, 1, mean)
 real_variance <- apply(scaled_read_data, 1, var)
 marg_dist <- data.frame(
@@ -53,7 +53,7 @@ g2<-ggplot(marg_dist|> filter(real_mean > 0.1))+
   scale_color_viridis_c(option="inferno")
 
 # Plot the top principal components --------------------
-constant_rows <- apply(read_counts, 1, function(x) all(x - mean(x) == 0))
+constant_rows <- apply(scaled_read_data, 1, function(x) all(x - mean(x) == 0))
 pca <- prcomp(t(scaled_read_data[!constant_rows,]), rank.=2, scale.=TRUE)
 projected_read_data <- predict(pca, t(scaled_read_data[!constant_rows, ]))
 projected_draws <- predict(pca, t(scaled_draws[!constant_rows, ]))
@@ -78,7 +78,7 @@ g3<-ggplot(data = both_data, aes(x=PC1, y=PC2,color=type)) +
   scale_color_manual(values = TYPE_COLORS, breaks = TYPE_ORDER, name="type")
 
 # Plot gene-gene correlation ---------------------------
-high_expr_rows <- which(apply(read_counts, 1, mean) > HIGH_EXPR_CUTOFF)
+high_expr_rows <- 1:nrow(scaled_read_data)
 distinct_cor <- function(x) {
   # correlations of pairs of variables in x
   # except no redundant pairs [e.g., (a,b) and (b,a), or (a,a)]
@@ -90,7 +90,7 @@ for (i in 1:100) {
   # Compute correlation in batches of 100 random rows with randomly chosen simulated samples
   # then those are aggregated to give the whole sample
   genes <- sample(high_expr_rows, size=30, replace=FALSE)
-  selected_samples <-sample(ncol(scaled_draws), ncol(read_counts))
+  selected_samples <-sample(ncol(scaled_draws), ncol(scaled_read_data))
   real_corr <- distinct_cor(scaled_read_data[genes,] |> t())
   sim_corr <- distinct_cor(scaled_draws[genes,selected_samples]  |> t())
   corpcor_corr <- distinct_cor(scaled_draws_corpcor[genes,selected_samples]  |> t())

@@ -21,6 +21,8 @@ execute:
   cache: true
   warning: false
 format:
+  docx:
+    fig-dpi: 800
   html:
     toc: true
     toc-expand: true
@@ -98,7 +100,7 @@ Depending upon settings used, performance of CYCLOPS dependent substantially on 
 ## Results
 
 We start with a reference dataset $X$ given by an $p \times n$ data matrix of $p$ features measured in each of $n$ independent samples, which could be any real dataset of interest.
-Our goal is to generate simulated dataset that looks, at least on average, the same as this reference dataset.
+Our goal is to generate a simulated dataset that looks, at least on average, the same as this reference dataset.
 To do this, we need to capture correlations between the $p$ features, which could represent gene expressions, protein abundances, or other measured values.
 We refer to these features as genes for simplicity.
 
@@ -255,8 +257,7 @@ This was repeated 20 times for each of four dependence conditions (independent, 
 
 Finally, we ran DESeq2 on each simulated 5 vs 5 experiment and compared the output FDR with the true percentages of genes that are differential expressed (@fig-DESeq2 a-d).
 We observed that DESeq2 is anti-conservative on all datasets, with similar mean true FDRs for each estimated FDR cutoff.
-However, we note that this anti-conservative nature is most present at very low FDR thresholds, was typically associated with only a single digit number of false positive genes.
-While that mean behavior was consistent whether or not the simulation included gene-gene dependence, simulations with dependence showed a substantially greater variance in the performance of DESeq2.
+While the mean behavior was consistent whether or not the simulation included gene-gene dependence, simulations with dependence showed a substantially greater variance in the performance of DESeq2.
 
 To demonstrate the application of our simulation method for another organism, we also simulated datasets using the mouse cortex dataset GSE151923 [@Wang2022] and selected samples from male mice, as in @fig-compare-to-real.
 We then simulated differential expression experiments as above and observed a similar result (@fig-DESeq2 e-f) as for the fly whole body datasets.
@@ -469,7 +470,10 @@ In the first, DESeq2 results were substantially more variable when simulating wi
 This indicates that DESeq2 had an increased chance of a larger simultaneous number of false positives, as well as increased chance of fewer false positives, when data included realistic dependence.
 We therefore recommend that benchmarking of differential expression methods should include gene-gene dependence whenever possible.
 This is despite the fact that differential expression is largely addressing a problem of the behavior of individual genes.
-In the second, CYCLOPS performance in estimating circadian phases depends upon gene-gene dependence, was sensitive to dependence structure of the data.
+We note that DESeq2's observed anti-conservative nature is most present at very low FDR thresholds and was typically associated with only a single digit number of false positive genes.
+Moreover, more modern methods to control FDR are compatible with DESeq2 and have been shown to be appropriately conservative [@Korthauer2019-lx].
+
+In the second application, CYCLOPS performance in estimating circadian phases depends upon gene-gene dependence, was sensitive to dependence structure of the data.
 Unlike DESeq2, CYCLOPS explicitly makes use of the correlations of genes and therefore this result is not surprising but still demonstrates the potential impact of the assumption of independence when benchmarking.
 
 Our comparisons to a real dataset show that none of our three methods are able to exactly capture all aspects of the real dataset.
@@ -478,6 +482,11 @@ Surprisingly, the spiked Wishart and corpcor methods improved in this metric onl
 These observations demonstrate that there is room for future improvements over independent data in these techniques, possibly incorporating more recent developments in copulae [@copulae].
 Possibly, this could demonstrate the limitations of methods based on the multivariate normal distribution or of the low-rank approximation used by all three of our methods. 
 Nonetheless, these methods represent significant improvements by other metrics and we recommend the inclusion of some dependence in nearly every simulated omics dataset.
+
+We observe that our PCA method generally overshoots the level of correlation in the real data set.
+The corpcor method typically undershoots.
+The spiked Wishart method also undershoots but less so than the corpcor method and therefore we believe represents the best starting point for users.
+However, we emphasize that in any application, the users should compare their simulated data to the reference data set and this can be used to determine the best method for the specific application at hand, which could vary depending on data set.
 
 We compared our simulated data to that of the R package SPsimSeq [@Assefa2020].
 In contrast to our package, SPsimSeq uses a two-step randomization.
@@ -498,7 +507,7 @@ All of these packages provide more flexibility in specifying dependence than our
 
 While we describe one special form of $\Sigma_{sim}$ where generation is highly efficient, there exist many other possible covariance matrix forms.
 Block diagonal covariance matrices are one such example which can efficiently represent even high-dimensional data [@Devijver02012018] and lend themselves to efficient simulation.
-Sparse matrix methods [@Bien2011-nx, @Bickel_sparse, @Cai_adaptive] yield exactly zero correlation between some variables, but it is less clear how to simulate data from these efficiently.
+Sparse matrix methods [@Bien2011-nx; @Bickel_sparse; @Cai_adaptive] yield exactly zero correlation between some variables, but it is less clear how to simulate data from these efficiently.
 Iterative sampling methods [@Krylov_subspaces] are one approach that could exploit the sparse nature and may even extend to sparse inverse covariance methods [@sparse_inverse_covariance].
 
 ## Data availability
