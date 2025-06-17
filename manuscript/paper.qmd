@@ -26,6 +26,17 @@ format:
   html:
     toc: true
     toc-expand: true
+  pdf:
+    keep-tex: true
+    template-partials: 
+      - title.tex
+    include-in-header:
+      text: |
+        \usepackage[noblocks]{authblk}
+        \renewcommand*{\Authsep}{, }
+        \renewcommand*{\Authand}{, }
+        \renewcommand*{\Authands}{, }
+        \renewcommand\Affilfont{\small}
 bibliography: references.bib
 ---
 ## Abstract
@@ -115,7 +126,7 @@ Counter-intuitively, data simulated using $\Sigma_{\text{sim}} := \widehat \Sigm
 
 ```{r}
 #| label: fig-intro
-#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. The goal is to pick $\\Sigma_{\text{sim}}$ so that $\\widehat \\Sigma_{\text{sim}} \\approx \\widehat \\Sigma_{\text{ref}}$ while using a special, highly efficient form. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{\text{ref}}$ of reference data compared to $\\widehat \\Sigma_{\text{sim}}$ from simulated data using $\\Sigma_{\text{sim}} = \\widehat \\Sigma_{\text{ref}}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods (pca, wishart, coprcor), SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
+#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. The goal is to pick $\\Sigma_{\\text{sim}}$ so that $\\widehat \\Sigma_{\\text{sim}} \\approx \\widehat \\Sigma_{\\text{ref}}$ while using a special, highly efficient form. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{\\text{ref}}$ of reference data compared to $\\widehat \\Sigma_{\\text{sim}}$ from simulated data using $\\Sigma_{\\text{sim}} = \\widehat \\Sigma_{\\text{ref}}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods (pca, wishart, coprcor), SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
 #| fig-width: 8
 #| fig-height: 6
 
