@@ -34,11 +34,11 @@ Simulation of realistic omics data is a key input for benchmarking studies that 
 Omics data involves large numbers of measured features on each samples and these measures are generally correlated with each other.
 However, simulation too often ignores these correlations, perhaps due to computational and statistical hurdles of doing so.
 To alleviate this, we describe three approaches for efficiently generating omics-scale data with correlated measures which mimic real datasets.
-These approaches all are based on a Gaussian copula approach with a covariance matrix that decomposes into a diagonal part and a low-rank part.
+These approaches are all based on a Gaussian copula approach with a covariance matrix that decomposes into a diagonal part and a low-rank part.
 We use these approaches to demonstrate the importance of including correlation in two benchmarking applications.
 First, we show that variance of results from the popular DESeq2 method increases when dependence is included.
 Second, we demonstrate that CYCLOPS, a method for inferring circadian time of collection from transcriptomics, improves in performance when given gene-gene dependencies in some circumstances.
-We provide an R package, dependentsimr, that has efficient implementations of these methods and can generate dependent data with arbitrary distributions, including discrete (binary, ordered categorical, Poisson, negative binomial), continuous (normal), or with an empirical distribution.
+We provide an R package, dependentsimr, that has efficient implementations of these methods and can generate dependent data with arbitrary marginal distributions, including discrete (binary, ordered categorical, Poisson, negative binomial), continuous (normal), or with an empirical distribution.
 
 ## Author Summary
 
@@ -55,13 +55,13 @@ Lastly, we provide a software package to act as reference implementations of the
 
 Omics data typically has far fewer samples than measurements per sample.
 This creates dual challenges in generating realistic simulated data for the purposes of benchmarking.
-First, there is not enough data to be able to compute a meaningful dependence structure (e.g., a correlation matrix).
+First, there is not enough data to be able to estimate an accurate dependence structure (e.g., a correlation matrix).
 Second, generating omics-scale data with a specified correlation matrix is slow due to the typical $O(p^3)$ nature of these algorithms, where $p$ is the number of measurements per sample.
 Moreover, there is a lack of practical guidance on how to generate simulated data with realistic dependence.
-These often mean that simulators assume independence of the measurements, which does not reflect reality.
+Simulators therefore often assume independence of the measurements, which does not reflect reality.
 
 Here, we describe three related solutions which all offer good performance and ease-of-use even for large omics-scale problems.
-This expands off a discussion we originally wrote as part of a larger discussion on best practices in omics benchmarking [@Brooks2024].
+This expands off part of a larger discussion we published on best practices in omics benchmarking [@Brooks2024].
 Our goal here is to show that generating correlated data does not have to be onerous and instead should be considered a baseline requirement when simulating data.
 
 Using a Gaussian copula [@Nelsen1998-nq] approach (also referred to as NORTA, for "normal to anything" [@norta]), the marginal (univariate) distributions can have realistic forms.
@@ -79,43 +79,43 @@ Copula approaches are flexible and have a long history [@Sklar] of use in fields
 More recently, copula approaches have been used for modelling or classification in multi-omics fields [@He_copula; @Ma_copula] and metagenomics [@Deek_microbiome].
 Projects simulating omics with copulas include SPsimSeq [@Assefa2020] and scDesign2 [@Sun2021].
 Some methods have employed the "vine copula" approach in the context of single-cell or spatial omics simulation [@fuetterer2019constructing; @scDesign3].
-This provides an alternative approach for choosing a copula which decomposes it into a set of 2-dimensional dependencies, however it comes at significant computational cost when done at the omics-scale.
+Vine copulas provide an alternative approach for choosing a copula which decomposes it into a set of 2-dimensional dependencies, however it comes at significant computational cost when done at the omics-scale.
 SeqNet uses instead a network approach for gene dependence [@SeqNet].
 
 Here, we describe three different strategies for determining covariance matrices, all of which enable efficient generation of simulated data due to following a specific form.
 Specifically, these all decompose into a diagonal part and a low-rank part, which speeds up generation of random vectors.
 First, the 'PCA' method uses principal component analysis (PCA) and picks the low-rank part such that the simulated data has the same variance in the top $k$ PCA components of the reference dataset.
 Second, the 'spiked Wishart' method fits $k$ components such that simulations with the same number of samples as the reference dataset will have, on average, the same PCA component variances as the reference.
-Unlike 'PCA', these variances are computed with respect to the simulated data's own PCA and not using the PCA weights of the reference dataset.
-Third, the 'corpcor' method uses the popular R library `corpcor` [@SchaferStrimmer2005; @OpgenRheinStrimmer2007], which implements a James-Stein type shrinkage estimator for the covariance matrix as a linear interpolation of the sample covariance matrix and a diagonal matrix.
-No method exactly captures the input data, indicating room for future research, but all improve upon the common approach of assuming independence.
-For ease of use, we implement this in an R package which supports normal, Poisson, DESeq2-based (negative binomial with sample-specific size factors), and empirical (for ordinal data) marginal distributions.
+Unlike 'PCA', these variances are computed with respect to the simulated data's own PCA rather than using the PCA weights of the reference dataset.
+Third, the 'corpcor' method builds off the popular R library `corpcor` [@SchaferStrimmer2005; @OpgenRheinStrimmer2007], which implements a James-Stein type shrinkage estimator for the covariance matrix as a linear interpolation of the sample covariance matrix and a diagonal matrix.
+No method exactly replicates the reference dataset's properties, indicating room for future research, but all improve upon the common approach of assuming independence.
+We implement this in an R package which supports normal, Poisson, DESeq2-based (negative binomial with sample-specific size factors), and empirical (for ordinal data) marginal distributions.
 
-We show two applications which demonstrate the effects of including dependence of measurements in simulated data when benchmarking computational pipelines.
+We include two applications which demonstrate the effects of including dependence of measurements in simulated data when benchmarking computational pipelines.
 First, we simulate RNA-seq data with differential expression between two conditions.
 Using DESeq2 to determine the differentially expressed genes, we found that dependence had little impact on the accuracy of reported $p$-values but increased the variance of those estimates.
 Second, we simulated a time series of RNA-seq data points and used the CYCLOPS method [@Anafi2017] to infer collection time from the RNA-seq data, without time labels.
-Depending upon settings used, performance of CYCLOPS dependent substantially on the dependence structure of the data, and surprisingly showed worst performance when given data with independent genes.
+Depending upon settings used, the performance of CYCLOPS depends substantially on the dependence structure of the data, and surprisingly showed improved performance when given data with dependence.
 
 ## Results
 
-We start with a reference dataset $X$ given by an $p \times n$ data matrix of $p$ features measured in each of $n$ independent samples, which could be any real dataset of interest.
-Our goal is to generate a simulated dataset that looks, at least on average, the same as this reference dataset.
+We start with a reference dataset $X$ given by a $p \times n$ data matrix of $p$ features measured in each of $n$ independent samples, which could be any real dataset of interest.
+Our goal is to be able to generate simulated datasets that look the same as this reference dataset, on average and when $n$ samples were simulated.
 To do this, we need to capture correlations between the $p$ features, which could represent gene expressions, protein abundances, or other measured values.
 We refer to these features as genes for simplicity.
 
 Our methods are based off the well-known Gaussian copula method, which uses a multivariate normal distribution to capture aspects of the gene-gene dependence, without necessarily assuming that the data is normally distributed.
 See @fig-intro a for a high-level overview.
 This multivariate normal distribution is parameterized by a $p \times p$ covariance matrix, $\Sigma$.
-In omics, choosing the covariance matrix $\Sigma_{sim}$ to use during simulation presents a challenge since $n < p$.
-The most obvious choice is to use the sample covariance matrix $\widehat \Sigma_{ref}$ of the reference dataset (possibly after some transformation of the data).
-However, using $\widehat \Sigma_{ref}$ is a poor choice for $\Sigma_{sim}$.
-Indeed, we consider a choice of $\Sigma_{sim}$ to be successful if datasets of $n$ samples simulated using $\Sigma_{sim}$ have sample covaraince matrices $\widehat \Sigma_{sim}$ that are similar to $\widehat \Sigma_{ref}$.
-Counter-intuitively, data simulated using $\Sigma_{sim} := \widehat \Sigma_{ref}$ have sample covariance matrices that systematically and substantially differ from $\widehat \Sigma_{ref}$, see @fig-intro b.
+In omics, choosing the covariance matrix $\Sigma_{\text{sim}}$ to use during simulation presents a challenge since $n < p$.
+The most obvious choice is to use the sample covariance matrix $\widehat \Sigma_{\text{ref}}$ of the reference dataset (possibly after some transformation of the data).
+However, using $\widehat \Sigma_{\text{ref}}$ is a poor choice for $\Sigma_{\text{sim}}$.
+Indeed, we consider a choice of $\Sigma_{\text{sim}}$ to be successful if datasets of $n$ samples simulated using $\Sigma_{\text{sim}}$ have sample covaraince matrices $\widehat \Sigma_{\text{sim}}$ that are similar to $\widehat \Sigma_{\text{ref}}$.
+Counter-intuitively, data simulated using $\Sigma_{\text{sim}} := \widehat \Sigma_{\text{ref}}$ have sample covariance matrices that systematically and substantially differ from $\widehat \Sigma_{\text{ref}}$, see @fig-intro b.
 
 ```{r}
 #| label: fig-intro
-#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. The goal is to pick $\\Sigma_{sim}$ so that $\\widehat \\Sigma_{sim} \\approx \\widehat \\Sigma_{ref}$ while using a special, highly efficient form. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{ref}$ of reference data compared to $\\widehat \\Sigma_{sim}$ from simulated data using $\\Sigma_{sim} = \\widehat \\Sigma_{ref}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods (pca, wishart, coprcor), SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
+#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. The goal is to pick $\\Sigma_{\text{sim}}$ so that $\\widehat \\Sigma_{\text{sim}} \\approx \\widehat \\Sigma_{\text{ref}}$ while using a special, highly efficient form. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{\text{ref}}$ of reference data compared to $\\widehat \\Sigma_{\text{sim}}$ from simulated data using $\\Sigma_{\text{sim}} = \\widehat \\Sigma_{\text{ref}}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods (pca, wishart, coprcor), SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
 #| fig-width: 8
 #| fig-height: 6
 
@@ -189,18 +189,19 @@ g2 <- ggplot(benchmark, aes(x=n_genes, y=max_vms / 1000, color=method)) +
 ```
 
 
-One reason this occurs is that $\widehat \Sigma_{ref}$ is low rank, specifically at most rank $n - 1$, which is less than $p$ in typical omics studies.
-This means that any data generated using $\Sigma_{sim} = \widehat \Sigma_{ref}$ will lie on a $n-1$-dimensional hyperplane.
-Intuitively, this means that the entire probability distribution of possible $p$ dimensional data have been squished into a $n-1$ dimensional space, generating much higher gene-gene correlations than in the reference dataset.
-In contrast, we know that omics contains at least some level of random noise that is approximately independent from one gene to the next.
+One reason this occurs is that $\widehat \Sigma_{\text{ref}}$ is low rank, specifically at most rank $n - 1$, which is much less than $p$ in typical omics studies.
+This means that any data generated using $\Sigma_{\text{sim}} = \widehat \Sigma_{\text{ref}}$ will lie on an $n-1$-dimensional hyperplane.
+Intuitively, this means that the entire probability distribution of potentially $p$ dimensional data has been squished into a $n-1$ dimensional space, generating much higher gene-gene correlations than in the reference dataset.
+In contrast, we know that omics contains at least some level of random noise that is essentially independent from one gene to the next.
 For example, RNA-seq involves a random sampling of fragments from the true sample of RNA molecules and other omics modes involve various background noise effects.
-We therefore need to "inject" some level of additional randomness that is independent between genes on top of the correlations captured by $\widehat \Sigma_{ref}$
+We therefore need to "inject" some level of additional randomness that is independent between genes on top of the correlations captured by $\widehat \Sigma_{\text{ref}}$
 
-We present three methods - called here PCA, spiked Wishart, and corpcor - for making this choice of $\Sigma_{sim}$, all which take the form
-$$ \Sigma_{sim} = D^2 + UW^2U^T $$
-where $D$ is a diagonal matrix capturing the injected independence and $UW^2U^T$ is a low-rank correlation matrix derived from $\widehat \Sigma_{ref}$.
-An additional advantage of this special form is that data may be generated very efficiently, @fig-intro b,c, compared to arbitrary $\Sigma_{sim}$ which typically require a Cholesky or eigenvalue decomposition.
-Specifically, random samples are generated using the fact that if $u,v$ are independent vectors with iid standard normal entries, then $Dv + UWu$ has covariance matrix equal to $D^2 + UW^2U^T$.
+We present three methods - to be called PCA, spiked Wishart, and corpcor - for making the choice of $\Sigma_{\text{sim}}$
+All three take the form
+$$ \Sigma_{\text{sim}} = D^2 + UW^2U^T $$
+where $D$ is a diagonal matrix capturing the injected independence and $UW^2U^T$ is a low-rank correlation matrix derived from $\widehat \Sigma_{\text{ref}}$.
+An additional advantage of this special form is that data may be generated very efficiently, @fig-intro b,c, compared to arbitrary $\Sigma_{\text{sim}}$ which typically require a Cholesky or eigenvalue decomposition.
+Specifically, random samples are generated using the fact that if $u,v$ are independent vectors with iid standard normal entries, then $Dv + UWu$ has covariance matrix equal to $D^2 + UW^2U^T$, see Methods.
 
 ### Comparison to real data
 
@@ -212,7 +213,7 @@ For the PCA method, we used $k=2$ dimensions and for the spiked Wishart, $k=11$.
 The coprcor method always uses the full data matrix, analogous to $k=11$.
 Note that PCA method must use a rank $k<11$ in order to generate full-rank data, see Methods, so these parameters are not directly comparable across methods.
 
-We also ran for comparison SPsimSeq, another RNA-seq simulator for both bulk and single-cell that uses a Gaussian copula-based model of dependence, see Supplemental Methods for details.
+For comparison we also ran SPsimSeq, another RNA-seq simulator for both bulk and single-cell that uses a Gaussian copula-based model of dependence, see Supplemental Methods for details.
 
 Simulated data captures the genes' mean and variance accurately (@fig-compare-to-real a-b).
 Next, we compared to the real dataset when projected onto the top two principal components of the real dataset (@fig-compare-to-real c).
@@ -234,13 +235,13 @@ Like PCA, the SPsimSeq simulator, overshot the first PCA component but did a bet
 
 ```{r}
 #| label: fig-compare-to-real
-#| fig-cap: "Comparison to real data run on a mouse cortex dataset from GSE151923. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled in real and PCA simulated data. The line of equality is marked in black. Points are colored according to the density of points in their region. Wishart and corpcor methods give similar results (not shown). (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). Genes with at least 100 reads were used. Values on the diagonal line indicate a match between the simulated and real datasets. (d) Projections onto the top two principal components of the real dataset for both real and simulated data. All 8 simulations (96 samples for each simulation) shown. (e) Principal component analysis was performed on all datasets and the variance captured by the top components is shown. Unlike (d), these components were fit from each dataset considered separately instead of reusing the weights from the real data."
+#| fig-cap: "Comparison to real reference data run on a mouse cortex dataset from GSE151923. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled in real and PCA simulated data. The line of equality is marked in black. Points are colored according to the density of points in their region. Wishart and corpcor methods give similar results (not shown). (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). Genes with at least 100 reads were used. Values on the diagonal line indicate a match between the simulated and real datasets. (d) Projections onto the top two principal components of the real dataset for both real and simulated data. All 8 simulations (96 samples for each simulation) shown. (e) Principal component analysis was performed on all datasets and the variance captured by the top components is shown. Unlike (d), these components were fit from each dataset considered separately instead of reusing the weights from the real data."
 #| fig-width: 10
 #| fig-height: 10
 readRDS("../processed/compare_to_real_plot.GSE151923.RDS")
 ```
 
-We further demonstrate our methods on a different data type, metabolomics, where we use normal marginal distributions and with far fewer features measured (42), see Supplemental Figure 3.
+We further demonstrated our methods on metabolomics data, where we use normal marginal distributions and with just 42 features measured, see Supplemental Figure 3.
 
 ### DESeq2 application
 
@@ -250,17 +251,18 @@ First, the independent filtering step [@Bourgon2010-uv] assumes independence but
 Relatedly, the false discovery rate (FDR) [@BH_FDR] allows only certain forms of dependence.
 Lastly, DESeq2's empirical Bayes steps could possibly be affected by gene dependence.
 
-We used a fly whole body RNA-Seq dataset GSE81142, see Supplemental Figure 1, and selected samples of male flies without treatment and after at least 2 hours of feeding to simulate 5 "control" samples.
+We used a fly whole body RNA-Seq dataset GSE81142, see Supplemental Figure 1.
+To select a "control" dataset samples were selected if they met the following criteria: male flies; without treatment; and after at least 2 hours of feeding.
 Unnormalized read counts were used as the reference dataset and all simulations used the DESeq2-based negative binomial model.
 We then randomly selected 5% of the genes to be differentially expressed, with absolute $\log_2$ fold change uniformly distributed between $0.2$ and $2.0$, either up or down regulated chosen randomly, and simulated 5 "experimental" samples.
-This was repeated 20 times for each of four dependence conditions (independent, PCA, Wishart, and corpcor).
+This was repeated 20 times for each of four dependence methods (independent, PCA, Wishart, and corpcor).
 
 Finally, we ran DESeq2 on each simulated 5 vs 5 experiment and compared the output FDR with the true percentages of genes that are differential expressed (@fig-DESeq2 a-d).
 We observed that DESeq2 is anti-conservative on all datasets, with similar mean true FDRs for each estimated FDR cutoff.
 While the mean behavior was consistent whether or not the simulation included gene-gene dependence, simulations with dependence showed a substantially greater variance in the performance of DESeq2.
 
 To demonstrate the application of our simulation method for another organism, we also simulated datasets using the mouse cortex dataset GSE151923 [@Wang2022] and selected samples from male mice, as in @fig-compare-to-real.
-We then simulated differential expression experiments as above and observed a similar result (@fig-DESeq2 e-f) as for the fly whole body datasets.
+We then simulated differential expression experiments as above and observed a similar result (@fig-DESeq2 e,f) as for the fly whole body datasets.
 
 ```{r}
 #| include: false
@@ -280,8 +282,12 @@ DESeq2_fdr_plot
 We next used our simulation method to benchmark CYCLOPS [@Anafi2017], which infers relative times for a set of unlabeled samples using an autoencoder to identify circular structures.
 We chose a mouse cortex time series dataset GSE151565, see Supplemental Figure 2, which contains a total of 77 samples every 3 hours, for 36 hours.
 As before, unnormalized read counts were used as the reference dataset and all simulations used the DESeq2-based negative binomial model.
-We computed the dependence structure of the genes as well as the variances of marginal distributions using the 11 time point 0 samples after removing one outlier and computed the means of gene expressions at each time point.
-We then used these to simulate 20 time series datasets for each of the independent, PCA, Wishart, and corpcor simulation methods.
+We computed the dependence structure of the genes as well as the variances of marginal distributions using the 12 time point 0 samples.
+We computed the means of gene expressions at each time point.
+We then used these to simulate 20 time series datasets for each of the four simulation methods: independent, PCA, Wishart, and corpcor.
+
+We note that, unlike many timeseries methods that consider correlation across time points, the dependence here is between genes within the same sample and no dependence between samples or timepoints is generated.
+This reflects scenarios where CYCLOPS is used, for example, post-mortem biopsy samples of unrelated individuals collected at different times [@CYCLOPS2].
 
 We ran CYCLOPS on each dataset with a list of cyclic mouse genes (from [@Zhang2014], JTK p-value $<0.05$), which yielded an estimated relative time for each sample.
 We evaluated CYCLOPS' performance compared to true circadian time using the circular correlation [@correlation_coeff], defined as follows:
@@ -290,12 +296,12 @@ where $n$ is the number of samples, $X_i$ and $Y_i$ are the true time and CYCLOP
 $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates accurate predictions by CYCLOPS.
 
 By default, CYCLOPS performs dimension reduction so that each dimension (called an "eigengene") contains at least 3% of the total variance.
-We found that CYCLOPS performance depended significantly on this parameter, with the default producing good performance across all simulations.
-However, when dropping CYCLOPS to require just 2% variance in each eigengene, we found that its performance depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS a).
-At that setting, CYCLOPS performance is much higher in the PCA method and moderately improved in Wishart method, compared to the independent method. 
+We found that CYCLOPS accuracy depended significantly on this parameter, with the default producing good accuracy across all simulations.
+However, when dropping CYCLOPS to require just 1% variance in each eigengene, we found that its accuracy depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS a).
+At that setting, CYCLOPS accuracy is much higher in the PCA method and moderately improved in Wishart method, compared to the 'independent' method. 
 This difference is likely driven by the difference in the number of eigengenes used (@fig-CYCLOPS b), which is a measure of how much dependence is present in the dataset.
-This demonstrates that the correlation structure of the transcriptome can have a major impact on performance.
-In this application, the differences between corpcor and Wishart were such that, while Wishart improved upon the number of eigengenes used compared to corpcor, both undershot the level of correlation in the real data set (see Supplemental Figure 2 d) and the difference between them was too small to affect the actual performance of CYCLOPS as measured by the circular correlation.
+This demonstrates that the correlation structure of the transcriptome can have a major impact on accuracy.
+In this application, the differences between corpcor and Wishart were such that, while Wishart improved upon the number of eigengenes used compared to corpcor, both undershot the level of correlation in the real data set (see Supplemental Figure 2 d) and the difference between them was too small to affect the actual accuracy of CYCLOPS as measured by the circular correlation.
 
 ```{r}
 #| include: false
@@ -304,7 +310,7 @@ source("circular_correlation.R")
 
 ```{r}
 #| label: fig-CYCLOPS
-#| fig-cap: "Performance of CYCLOPS on simulated time series datasets based on mouse cortex dataset (GSE151565), using eigengenes of at least 2% variance. (a) Absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated datasets. (b) The number of eigengenes used by CYCLOPS; the dotted line indicates the number of eigengenes used by CYCLOPS on the real data (5). (c-f) Examples of CYCLOPS estimated phases on the simulated datasets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-cap: "Performance of CYCLOPS on simulated time series datasets based on mouse cortex dataset (GSE151565), using eigengenes of at least 1% variance. (a) Absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated datasets. (b) The number of eigengenes used by CYCLOPS; the dotted line indicates the number of eigengenes used by CYCLOPS on the real data (5). (c-f) Examples of CYCLOPS estimated phases on the simulated datasets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
 #| fig-width: 12
 #| fig-height: 8
 cyclops_plot
@@ -312,7 +318,7 @@ cyclops_plot
 
 ## Methods
 
-Here, we provide an introduction to the Gaussian copula approach before describing our three methods for choosing $\Sigma_{sim}$.
+Here, we provide an introduction to the Gaussian copula approach before describing our three methods for choosing $\Sigma_{\text{sim}}$.
 
 ### Multivariate normal distribution
 
@@ -328,18 +334,18 @@ In particular, $\widehat \Sigma$ is at most a rank $n - 1$ matrix while $\Sigma$
 This means that $N(\mu, \widehat \Sigma)$ and $N(\mu, \Sigma)$ are quite different distributions: every sample from $N(\mu, \hat \Sigma)$ is contained in an $n-1$ dimensional plane.
 If $n$ is small, then this is very unlike real data, which typically is close to $p$ dimensional.
 
-The difficulty then is that we only know $\widehat \Sigma_{ref}$ from our reference dataset, but we need to choose a $\Sigma_{sim}$ with which we can simulate data and the obvious choice of $\widehat \Sigma_{ref}$ is inadequate.
-The most common choice is to assume $\Sigma_{sim}$ is a diagonal matrix.
+The difficulty then is that we only know $\widehat \Sigma_{\text{ref}}$ from our reference dataset, but we need to choose a $\Sigma_{\text{sim}}$ with which we can simulate data and the obvious choice of $\widehat \Sigma_{\text{ref}}$ is inadequate.
+The most common choice is to assume $\Sigma_{\text{sim}}$ is a diagonal matrix.
 This is the situation we want to avoid where the generated data is independent: $x_i$ and $x_j$ have zero covariance unless $i = j$.
 However, this has some nice properties, such as being simple and fast to simulate (just generate univariate normal data for each variable).
 
-We describe three alternative approaches in Methods of how to choose a $\Sigma_{sim}$ that will produce data similar to the input data.
+We describe three alternative approaches in Methods of how to choose a $\Sigma_{\text{sim}}$ that will produce data similar to the input data.
 All three of these rely on a specific form of $\Sigma$, namely that
-$$ \Sigma_{sim} = D^2 + UW^2U^T $$
+$$ \Sigma_{\text{sim}} = D^2 + UW^2U^T $$
 where $D$ is a $p \times p$ diagonal matrix, $U$ is $p \times k$ for some $k \ll p$ and $W$ is a diagonal $k \times k$ matrix.
 This is a combination of an independent part (the diagonal matrix) and a low-rank part ($U W^2 U^T$ is rank at most $k$).
 
-Generating data for $\Sigma_{sim}$ of this form is highly efficient.
+Generating data for $\Sigma_{\text{sim}}$ of this form is highly efficient.
 We use two basic facts about the multivariate distribution.
 First, if $A$ is a matrix and $u \sim N(0, \Sigma)$ then $Au \sim N(0, A \Sigma A^T)$.
 Second, if $u \sim N(0, \Sigma_1)$ and $v \sim N(0, \Sigma_2)$, then $u + v \sim N(0, \Sigma_1 + \Sigma_2)$.
@@ -378,55 +384,55 @@ We describe this in detail:
 5.  Set $z' = UWu + D v$.
 6.  Output the vector $x'$ where $x'_i = F_i^{-1}(\Phi(z'))$.
 
-The generated data vector $z'$ has covariance matrix $\Sigma_{sim} = D^2 + U W^2 U^T$.
-Moreover, we require that $\Sigma$ satisfies that $\left(\Sigma_{sim}\right)_{ii}$ is approximately 1 for each $i$.
+The generated data vector $z'$ has covariance matrix $\Sigma_{\text{sim}} = D^2 + U W^2 U^T$.
+Moreover, we require that $\Sigma$ satisfies that $\left(\Sigma_{\text{sim}}\right)_{ii}$ is approximately 1 for each $i$.
 That guarantees that the output $x'$ has each entry with the same marginal distributions $F_i$ as was originally fit and inherits gene-gene dependence from $Z'$.
 This method is computationally efficient, taking hardly any more time or memory than simulations without dependence.
 
 
-Below, we describe the three methods for selecting the components of the covariance matrix $\Sigma_{sim} := D^2 + U W^2 U^T$.
+Below, we describe the three methods for selecting the components of the covariance matrix $\Sigma_{\text{sim}} := D^2 + U W^2 U^T$.
 
 ###  PCA method
 
 The first of our three methods attempts to match the top $k$ PCA components of $Z$, the reference data set after applying the normalizing transform.
-Specifically, let $u_1, \ldots, u_k$ be the left singular vectors of $Z$ with $\lambda_1, \ldots, \lambda_k$ the corresponding top $k$ singular values.
-This method computes $\Sigma_{sim}$ such that $u_i^T \Sigma_{sim} u_i = \lambda_i^2$, i.e. that the variance in the direction of $u_i$ exactly matches of the reference dataset's variance in that same direction.
+Specifically, let $u_1, \ldots, u_k$ be the left singular vectors of $Z$ with $\lambda_1, \ldots, \lambda_k$ the corresponding top $k$ singular values and let $U$ be the $p \times k$ matrix with columns $u_i$.
+This method computes $\Sigma_{\text{sim}}$ such that $u_i^T \Sigma_{\text{sim}} u_i = \lambda_i^2$, i.e. that the variance in the direction of $u_i$ exactly matches the reference dataset's variance in that same direction.
 One solution is to use the sample covariance matrix, but that is not full rank and would match for all $i \leq n$ instead of just $i \leq k$.
 Instead, we use the following:
 
-1. Compute $A_{ij} = \delta_{ij} - \sum_\ell U_{\ell,i}^2 U_{\ell,j}^2$ and $B_{i} = \lambda_i^2/(n-1)^2 - \sum_\ell U_{\ell,i}^2 \left(\widehat \Sigma_{ref}\right)_{\ell\ell}$ where $\delta_{ij}$ is the Kronecker delta and $\widehat \Sigma_{ref} = Z Z^T / (n-1)$ is the covariance matrix of $Z$.
+1. Compute $A_{ij} = \delta_{ij} - \sum_\ell U_{\ell,i}^2 U_{\ell,j}^2$ and $B_{i} = \lambda_i^2/(n-1)^2 - \sum_\ell U_{\ell,i}^2 \left(\widehat \Sigma_{\text{ref}}\right)_{\ell\ell}$ where $\delta_{ij}$ is the Kronecker delta and $\widehat \Sigma_{\text{ref}} = Z Z^T / (n-1)$ is the covariance matrix of $Z$.
 2. Solve $A w = B$ and set $W$ to be the diagonal matrix with $w$ along its diagonal.
 3. Set $U$ to be the $p \times k$ matrix with columns $u_i$.
-4. Set $D$ to be the diagonal matrix with $D_{ii}^2 = \left(\widehat \Sigma_{ref}\right)_{ii} - (UW^2U^T)_{ii}$, which is the remaining variance.
+4. Set $D$ to be the diagonal matrix with $D_{ii}^2 = \left(\widehat \Sigma_{\text{ref}}\right)_{ii} - (UW^2U^T)_{ii}$, which is the remaining variance.
 
-Steps 1 and 2 give that $u_i \Sigma_{sim} u_i^T = \lambda_i$ for $i = 1, \ldots, k$.
-Step 4 ensures that $\left(\Sigma_{sim}\right)_{jj} = 1$ for $j = 1, \ldots, p$.
+Steps 1 and 2 give that $u_i \Sigma_{\text{sim}} u_i^T = \lambda_i$ for $i = 1, \ldots, k$.
+Step 4 ensures that $\left(\Sigma_{\text{sim}}\right)_{jj} = 1$ for $j = 1, \ldots, p$.
 
 ### Spiked Wishart method
 
 The second method also makes use of PCA but has a different objective.
-If $n$ samples are drawn from $N(0, \Sigma_{sim})$ then we want the variances of their PCA components to match those of the reference dataset.
-Specifically, let $\lambda_1, \ldots, \lambda_{n-1}$ be the ${n-1}$ non-zero singular values of $Z$ ($\lambda_n$ is always approximately zero due to the normalization procedure), and let $\lambda'_1, \ldots, \lambda'_{n-1}$ be the singular values of $Z'$ where $Z'$ has $n-1$ columns each iid $N(0, \Sigma_{sim})$.
-Then we want to choose $\Sigma_{sim}$ such that $E[\lambda'_i] = \lambda_i$ for each $i$, where $E[Y]$ denotes the expectation of the random variable $Y$.
+If $n$ samples are drawn from $N(0, \Sigma_{\text{sim}})$ then we want the variances of their PCA components to match those of the reference dataset.
+Specifically, let $\lambda_1, \ldots, \lambda_{n-1}$ be the ${n-1}$ non-zero singular values of $Z$ ($\lambda_n$ is always approximately zero due to the normalization procedure), and let $\lambda'_1, \ldots, \lambda'_{n-1}$ be the singular values of $Z'$ where $Z'$ has $n-1$ columns each iid $N(0, \Sigma_{\text{sim}})$.
+Then we want to choose $\Sigma_{\text{sim}}$ such that $E[\lambda'_i] = \lambda_i$ for each $i$, where $E[Y]$ denotes the expectation of the random variable $Y$.
 
 Since the distribution of the $\lambda'_i$ does not have a known analytic solution, we approximate this situation with the spiked Wishart distribution.
-The rank $k-1$ Wishart distribution is the distribution of sample covariance matrices of $Z$ whose $n$ columns of $Z$ are iid $N(0, \Sigma_{sim})$.
-The spiked Wishart is the special case where $\Sigma_{sim}$ has $k$ arbitrary eigenvalues and the remaining are all equal to a constant.
-Note that the singular values of $Z$ are the square roots of the eigenvalues of $\widehat \Sigma_{ref}.
-While our case has $\Sigma_{sim}$ non-diagonal, $\Sigma_{sim}$ may be diagonalized by orthogonal rotations due the spectral theorem, and orthogonal rotations do not change the singular values of $Z$.
-Therefore, the distribution of singular values is not affected by the assumption that $\Sigma_{sim}$ is diagonal.
-Moreover, for the form $\Sigma_{sim} = D^2 + U W^2 U^T$ where $p$ is very large, each column of $U$ is typically very close to orthogonal to any standard basis vector.
-Therefore, when $D = cI$ for some constant $c$, we can approximate $\Sigma_{sim}$ as having $k$ arbitrary eigenvalues from $W^2$ and $n$ remaining eigenvalues all equal to $c^2$.
+The rank $k-1$ Wishart distribution is the distribution of sample covariance matrices of $Z$ whose $n$ columns of $Z$ are iid $N(0, \Sigma_{\text{sim}})$.
+The spiked Wishart is the special case where $\Sigma_{\text{sim}}$ has $k$ arbitrary eigenvalues and the remaining are all equal to a constant.
+Note that the singular values of $Z$ are the square roots of the eigenvalues of $\widehat \Sigma_{\text{ref}}$.
+While our case has $\Sigma_{\text{sim}}$ non-diagonal, $\Sigma_{\text{sim}}$ may be diagonalized by orthogonal rotations due the spectral theorem, and orthogonal rotations do not change the singular values of $Z$.
+Therefore, the distribution of singular values is not affected by the assumption that $\Sigma_{\text{sim}}$ is diagonal.
+Moreover, for the form $\Sigma_{\text{sim}} = D^2 + U W^2 U^T$ where $p$ is very large, each column of $U$ is typically very close to orthogonal to any standard basis vector.
+Therefore, when $D = cI$ for some constant $c$, we can approximate $\Sigma_{\text{sim}}$ as having $k$ arbitrary eigenvalues from $W^2$ and $n$ remaining eigenvalues all equal to $c^2$.
 This is a spiked Wishart distribution.
 
 However, the spiked Wishart distribution also has no known analytic solution for the distribution of its eigenvalues either.
 Therefore, we use an efficient sampling and stochastic gradient descent method that we recently described [@wishart].
-Since the normalizing transform has been applied, $c$ will be close to one and $\left(\Sigma_{sim}\right)_{ii} \approx 1$ for each $i$.
+Since the normalizing transform has been applied, $c$ will be close to one and $\left(\Sigma_{\text{sim}}\right)_{ii} \approx 1$ for each $i$.
 
 Specifically, we do:
 
 1. Set $U$ to be the $p \times k$ matrix with columns $u_i$, the left singular vectors of $Z$.
-2. Compute $w_1, \ldots, w_k$ and $c$ by stochastic gradient descent minimizing $\sum_{i} (E[\lambda'_i] - \lambda_i)^2$ for $\Sigma_{sim}$ diagonal with entries $w_1^2, \ldots, w_k^2, c^2, \ldots, c^2$ [@wishart].
+2. Compute $w_1, \ldots, w_k$ and $c$ by stochastic gradient descent minimizing $\sum_{i} (E[\lambda'_i] - \lambda_i)^2$ for $\Sigma_{\text{sim}}$ diagonal with entries $w_1^2, \ldots, w_k^2, c^2, \ldots, c^2$ [@wishart].
 4. Set $W$ diagonal with the entries $w_1, \ldots, w_k$.
 3. Set $D = cI$.
 
@@ -436,7 +442,7 @@ The `corpcor` package [@SchaferStrimmer2005; @OpgenRheinStrimmer2007] computes a
 For large $p$, this greatly improves the estimate of the covariance matrix by introducing a little bias towards zero correlations and equal variances of genes.
 It computes optimal values of $\lambda_1$, and $\lambda_2$, its two regularization coefficients.
 It then uses $\lambda_1$ to linearly interpolate the sample covariance matrix towards the identity matrix $I$ and $\lambda_2$ to interpolate the vector of variances towards the median variance value.
-Since the sample covariance matrix is rank at most $n$, we again obtain a matrix of the form $\Sigma_{sim} = D^2 + UW^2U^T$.
+Since the sample covariance matrix is rank at most $n$, we again obtain a matrix of the form $\Sigma_{\text{sim}} = D^2 + UW^2U^T$.
 
 This algorithm is:
 
@@ -447,28 +453,28 @@ This algorithm is:
 
 ## Discussion
 
-We described the well-known Gaussian copula approach and recommended a specific form of covariance matrix which is well tailored to omics data simulation.
+Here we have described the well-known Gaussian copula approach and argued that a specific form of covariance matrix which is well tailored to omics data simulation.
 We developed three methods using this form of covariance matrix which can be used to mimic a reference dataset for simulation.
 All of these methods use a multivariate normal distribution as an intermediate step and therefore substantially restrict the kinds of dependence that can be simulated.
-However, when operating in a high-dimensional space some simplification is likely required.
+However, when operating in a high-dimensional space some simplification is required.
 
 To encourage adoption of dependence in simulated omics data, we developed `dependentsimr`, an R package that generates omics-scale data with realistic correlation.
 This implementation is efficient and simple, requiring just two lines of code to fit a model to a reference dataset and then simulate data from it.
-We demonstrated this package on RNA-seq data, using the DESeq2 method to fit negative binomial marginal distributions.
-However, this package is actually quite general and supports normal, Poisson, negative binomial, and arbitrary ordered discrete distributions using the empirical CDF.
+We demonstrated this package on RNA-seq data, using the DESeq2 method to fit negative binomial marginal distributions as well as a metabolomics dataset using normal marginal distributions.
+Our package is even more general and supports normal, Poisson, negative binomial, and arbitrary ordered discrete distributions using the empirical CDF.
 Moreover, it can support multi-modal data such as is increasingly common in multi-omics.
 In addition, the techniques described here are relatively simple to implement and we hope they can see broader adoption outside of our package.
 
-We highlight that our methods are highly efficient and easily scale to the large feature counts typical of omics data sets.
-While runtime of simulators is typically not critical, we hypothesize that it introduces an inconvenience that has slowed the adoption of dependence in omics simulation and could be particularly cumbersome whenever large numbers of simulated datasets are needed.
+We demonstrated that our methods are highly efficient and easily scale to the large feature counts typical of omics data sets.
+While runtime of simulators is typically not critical, we posit that it introduces a sufficient inconvenience to have slowed the adoption of dependence in omics simulation and could be particularly cumbersome whenever large numbers of simulated datasets are needed.
 Moreover, high memory use of the alternatives could be an even larger barrier than run-time.
-Of note is that alternative methods are typically run with only a subset of genes chosen, for example, 500-200 genes for scDesign2 [@Sun2021], 1000 genes for scDesign3 [@scDesign3], and 621 for SeqNet [@SeqNet], presumably due to the resource requirements.
-In contrast, our methods can operate on the entire space of genes, avoiding an arbitrary choice of cutoff, though it should be noted that correlation is most meaningful in high-expressed, high variance genes and so subsetting genes is a reasonable approach.
+Of note is that alternative methods are typically run with only a subset of genes chosen, for example, 500-2000 genes for scDesign2 [@Sun2021], 1000 genes for scDesign3 [@scDesign3], and 621 for SeqNet [@SeqNet]; presumably these limitations are due to the high resource requirements.
+In contrast, our methods can operate on the entire space of genes, avoiding an arbitrary choice of cutoff, though it should be noted that correlation is most meaningful in high-expressed, high-variance genes and so subsetting genes is reasonable.
 
-We demonstrated the importance of including gene-gene dependence in simulated data by two application benchmarks.
+We demonstrated the importance of including gene-gene dependence in simulated data by two benchmarking applications.
 In the first, DESeq2 results were substantially more variable when simulating with gene-gene dependence.
 This indicates that DESeq2 had an increased chance of a larger simultaneous number of false positives, as well as increased chance of fewer false positives, when data included realistic dependence.
-We therefore recommend that benchmarking of differential expression methods should include gene-gene dependence whenever possible.
+We therefore recommend that benchmarking of differential expression methods include gene-gene dependence whenever possible.
 This is despite the fact that differential expression is largely addressing a problem of the behavior of individual genes.
 We note that DESeq2's observed anti-conservative nature is most present at very low FDR thresholds and was typically associated with only a single digit number of false positive genes.
 Moreover, more modern methods to control FDR are compatible with DESeq2 and have been shown to be appropriately conservative [@Korthauer2019-lx].
@@ -480,13 +486,13 @@ Our comparisons to a real dataset show that none of our three methods are able t
 In particular, the gene-gene correlations were too high in the PCA method and too low in the spiked Wishart and corpcor methods.
 Surprisingly, the spiked Wishart and corpcor methods improved in this metric only slightly compared to the simulations with independent genes.
 These observations demonstrate that there is room for future improvements over independent data in these techniques, possibly incorporating more recent developments in copulae [@copulae].
-Possibly, this could demonstrate the limitations of methods based on the multivariate normal distribution or of the low-rank approximation used by all three of our methods. 
+Possibly, this could demonstrate the limitations of methods based on the multivariate normal distribution or of the low-rank approximation used by all three proposed methods. 
 Nonetheless, these methods represent significant improvements by other metrics and we recommend the inclusion of some dependence in nearly every simulated omics dataset.
 
 We observe that our PCA method generally overshoots the level of correlation in the real data set.
 The corpcor method typically undershoots.
 The spiked Wishart method also undershoots but less so than the corpcor method and therefore we believe represents the best starting point for users.
-However, we emphasize that in any application, the users should compare their simulated data to the reference data set and this can be used to determine the best method for the specific application at hand, which could vary depending on data set.
+However, we emphasize that in any application, the users should compare their simulated data to the reference dataset and this can be used to determine the best method for the specific application at hand, which could vary depending on data set.
 
 We compared our simulated data to that of the R package SPsimSeq [@Assefa2020].
 In contrast to our package, SPsimSeq uses a two-step randomization.
@@ -500,12 +506,12 @@ SPsimSeq is more specialized and full-featured for RNA-seq simulation, providing
 In comparison, our dependentsimr package requires manually setting marginal expression values to inject DE, but also supports other marginal distributions for situations outside of RNA-seq.
 
 Other Gaussian copula-based R packages include `bindata`, `GenOrd`, and `SimMultiCorrData`, the last of these being the most comprehensive.
-The `bigsimr` package provides faster implementations of these methods to scale up to omics-level data.
+The `bigsimr` package provides faster implementations of these methods which scale up to omics-level data.
 However, even this is computationally demanding; their paper references generating 20,000-dimensional vectors in “under an hour” using 16 threads.
 The `copula` package provides even more flexible dependence options through use of copulas.
-All of these packages provide more flexibility in specifying dependence than our package, which can only mimic existing datasets, and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.
+All of these packages provide more flexibility in specifying dependence and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.
 
-While we describe one special form of $\Sigma_{sim}$ where generation is highly efficient, there exist many other possible covariance matrix forms.
+While we describe one special form of $\Sigma_{\text{sim}}$ where generation is highly efficient, there exist many other possible covariance matrix forms.
 Block diagonal covariance matrices are one such example which can efficiently represent even high-dimensional data [@Devijver02012018] and lend themselves to efficient simulation.
 Sparse matrix methods [@Bien2011-nx; @Bickel_sparse; @Cai_adaptive] yield exactly zero correlation between some variables, but it is less clear how to simulate data from these efficiently.
 Iterative sampling methods [@Krylov_subspaces] are one approach that could exploit the sparse nature and may even extend to sparse inverse covariance methods [@sparse_inverse_covariance].
