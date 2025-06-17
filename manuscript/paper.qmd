@@ -223,7 +223,7 @@ Specifically, random samples are generated using the fact that if $u,v$ are inde
 
 To compare the three simulation methods with a real dataset, we chose as a reference dataset 12 mouse cortex RNA-seq samples from accession GSE151923 [@Wang2022].
 We then simulated data mimicking this reference using all three simulation methods (PCA, spiked Wishart, and corpcor) as well as a simulation with independent genes.
-All data were simulated with negative binomial distributions fit by DESeq2.
+All data were simulated with negative binomial distributions fit by DESeq2 on unnormalized read counts.
 We repeated the simulations, each of 12 samples, a total of 8 times to estimate variance.
 For the PCA method, we used $k=2$ dimensions and for the spiked Wishart, $k=11$.
 The coprcor method always uses the full data matrix, analogous to $k=11$.
