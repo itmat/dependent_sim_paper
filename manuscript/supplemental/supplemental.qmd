@@ -24,37 +24,40 @@ format:
   html:
     toc: true
     toc-expand: true
+  pdf:
+    include-in-header:
+      - text: \usepackage{placeins}
 bibliography: ../references.bib
 ---
-
 ## Supplemental Material
 
 ### Comparisons to real data
+Below, we give three comparisons of simulated data with their real reference data.
 
 ```{r}
 #| label: fig-compare-to-real-metabolomics
 #| fig-cap: "Comparison to plasma metabolomics data set, obtained from MetaboAnalyst (https://www.metaboanalyst.ca/MetaboAnalyst/upload/RocUploadView.xhtml). Methods were run using normal marginal distributions. Unlike other examples, this included more samples (59) than measured features (42 metabolites), demonstrating that these methods also work in that case. Data were log-scaled prior to simulation."
-#| fig-width: 10
-#| fig-height: 10
+#| fig-width: 8 
+#| fig-height: 8
 readRDS("../../processed/compare_to_real_plot_metabolomics.RDS")
+```
 
 ```{r}
 #| label: fig-compare-to-real-fly
 #| fig-cap: "Comparison to real data run on a fly whole body data set from GSE81142. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled in real and PCA simulated data. The line of equality is marked in black. Points are colored according to the density of points in their region. Wishart and corpcor methods give similar results (not shown). (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). Genes with at least 30 reads were used. Values on the diagonal line indicate a match between the simulated and real data sets. (d) Projections onto the top two principal components of the real data set for both real and simulated data. All 8 simulations (96 samples for each simulation) shown. (e) Principal component analysis was performed on all data sets and the variance captured by the top components is shown. Unlike (d), these components were fit from each data set considered separately instead of reusing the weights from the real data."
-#| fig-width: 10
-#| fig-height: 10
+#| fig-width: 8
+#| fig-height: 8
 readRDS("../../processed/compare_to_real_plot.GSE81142.RDS")
 ```
 
 ```{r}
 #| label: fig-compare-to-real-mouse
 #| fig-cap: "Comparison to real data run on a mouse cortex timeseries body data set from GSE151565. Only timepoint ZT0 was used for this comparison. (a-b) Comparison of gene (a) mean expression and (b) variance, log-scaled in real and PCA simulated data. The line of equality is marked in black. Points are colored according to the density of points in their region. Wishart and corpcor methods give similar results (not shown). (c) Quantile-quantile plot comparing correlation values of gene pairs from real data and simulated data (both with and without dependence). Genes with at least 30 reads were used. Values on the diagonal line indicate a match between the simulated and real data sets. (d) Projections onto the top two principal components of the real data set for both real and simulated data. All 8 simulations (96 samples for each simulation) shown. (e) Principal component analysis was performed on all data sets and the variance captured by the top components is shown. Unlike (d), these components were fit from each data set considered separately instead of reusing the weights from the real data."
-#| fig-width: 10
-#| fig-height: 10
+#| fig-width: 8
+#| fig-height: 8
 readRDS("../../processed/compare_to_real_plot.GSE151565.RDS")
 ```
-```
-
+\FloatBarrier
 ## Supplemental Methods
 
 ### Running SPsimSeq
