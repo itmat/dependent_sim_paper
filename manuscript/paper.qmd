@@ -313,7 +313,7 @@ $\rho$ has value between $-1$ and $1$, and a $|\rho|$ close to $1$ indicates acc
 
 By default, CYCLOPS performs dimension reduction so that each dimension (called an "eigengene") contains at least 3% of the total variance.
 We found that CYCLOPS accuracy depended significantly on this parameter, with the default producing good accuracy across all simulations.
-However, when dropping CYCLOPS to require just 1% variance in each eigengene, we found that its accuracy depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS a).
+However, when dropping CYCLOPS to require just 2% variance in each eigengene, we found that its accuracy depends significantly on the dependence structure of the simulated time series data (@fig-CYCLOPS a).
 At that setting, CYCLOPS accuracy is much higher in the PCA method and moderately improved in Wishart method, compared to the 'independent' method. 
 This difference is likely driven by the difference in the number of eigengenes used (@fig-CYCLOPS b), which is a measure of how much dependence is present in the dataset.
 This demonstrates that the correlation structure of the transcriptome can have a major impact on accuracy.
@@ -326,7 +326,7 @@ source("circular_correlation.R")
 
 ```{r}
 #| label: fig-CYCLOPS
-#| fig-cap: "Performance of CYCLOPS on simulated time series datasets based on mouse cortex dataset (GSE151565), using eigengenes of at least 1% variance. (a) Absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated datasets. (b) The number of eigengenes used by CYCLOPS; the dotted line indicates the number of eigengenes used by CYCLOPS on the real data (5). (c-f) Examples of CYCLOPS estimated phases on the simulated datasets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
+#| fig-cap: "Performance of CYCLOPS on simulated time series datasets based on mouse cortex dataset (GSE151565), using eigengenes of at least 2% variance. (a) Absolute circular correlations between true phases and CYCLOPS estimated phases on the simulated datasets. (b) The number of eigengenes used by CYCLOPS; the dotted line indicates the number of eigengenes used by CYCLOPS on the real data (5). (c-f) Examples of CYCLOPS estimated phases on the simulated datasets. CYCLOPS shows good performance when it separates out points by color (true circadian time)."
 #| fig-width: 12
 #| fig-height: 8
 cyclops_plot
