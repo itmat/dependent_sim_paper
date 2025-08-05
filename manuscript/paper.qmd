@@ -525,7 +525,7 @@ Other Gaussian copula-based R packages include `copula`, `bindata`, `GenOrd`, an
 The `bigsimr` package provides faster implementations of these methods which scale up to omics-level data.
 However, even this is computationally demanding; their paper references generating 20,000-dimensional vectors in “under an hour” using 16 threads.
 All of these packages provide more flexibility in specifying dependence and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.
-Another package that optimizes the speed of random multivariate normal vector generation is the `mvnfast` package for R [@mvnfast], however, we show that this does not provide a meaningful speedup for our use-cases due to the reliance on the Cholesky decomposition, see @fig-intro d.
+Another package that optimizes the speed of random multivariate normal vector generation is the `mvnfast` package for R [@mvnfast], however, we show that this does not provide a meaningful speedup for our use-cases, likely due to the reliance on the Cholesky decomposition, see @fig-intro d.
 
 While we describe one special form of $\Sigma_{\text{sim}}$ where generation is highly efficient, there exist many other possible covariance matrix forms.
 Block diagonal covariance matrices are one such example which can efficiently represent even high-dimensional data [@Devijver02012018] and lend themselves to efficient simulation.
