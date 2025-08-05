@@ -83,7 +83,7 @@ Our goal here is to show that generating correlated data does not have to be one
 Using a Gaussian copula [@Nelsen1998-nq] approach (also referred to as NORTA, for "normal to anything" [@norta]), the marginal (univariate) distributions can have realistic forms.
 These solutions operate by taking a real, reference dataset and producing simulations that mimic it.
 However, a major challenge when simulating datasets is choice of the copula, which is a mathematical object that encodes the dependence between two or more variables.
-For Guassian copulas, this is a choice of a covariance matrix.
+For Gaussian copulas, this is a choice of a covariance matrix.
 However, the sample covariance matrix of a reference dataset is a poor choice and we present three alternative choices.
 
 There is a large body of literature on determining covariance matrices for various purposes.
@@ -131,7 +131,7 @@ Counter-intuitively, data simulated using $\Sigma_{\text{sim}} := \widehat \Sigm
 
 ```{r}
 #| label: fig-intro
-#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. The goal is to pick $\\Sigma_{\\text{sim}}$ so that $\\widehat \\Sigma_{\\text{sim}} \\approx \\widehat \\Sigma_{\\text{ref}}$ while using a special, highly efficient form. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{\\text{ref}}$ of reference data compared to $\\widehat \\Sigma_{\\text{sim}}$ from simulated data using $\\Sigma_{\\text{sim}} := \\widehat \\Sigma_{\\text{ref}}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods (pca, wishart, coprcor), SPsimSeq, multivariate normal sampling (using the mvrnorm function from the MASS package), and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts."
+#| fig-cap: "(a) Schematic of our Gaussian copula-based approach. The goal is to pick $\\Sigma_{\\text{sim}}$ so that $\\widehat \\Sigma_{\\text{sim}} \\approx \\widehat \\Sigma_{\\text{ref}}$ while using a special, highly efficient form. (b) Eigenvalues of the sample covariance matrix $\\widehat \\Sigma_{\\text{ref}}$ of reference data compared to $\\widehat \\Sigma_{\\text{sim}}$ from simulated data using $\\Sigma_{\\text{sim}} := \\widehat \\Sigma_{\\text{ref}}$. 100 genes and 12 samples were used for both reference and the 20 simulated datasets. Both reference and simulated data follow a multivariate normal distribution. Eigenvalues are numbered from largest to smallest. (c-d) Comparison of (c) run time and (d) memory usage for our methods (pca, wishart, corpcor), SPsimSeq, mvrnorm (from the MASS package), the mvnfast package, and vine copula (implemented by the rvinecopulib R package). 100 samples were generated with a varying number of genes. A mouse cortex dataset GSE151564 was randomly subsetted to have the required number of genes to be used as the reference data set. Vine copula method was only run up to 2000 genes due to the memory use required at higher gene counts. All methods used a single thread."
 #| fig-width: 8
 #| fig-height: 6
 
@@ -180,7 +180,7 @@ gdiagram <- ggplot() +
     theme(panel.background = element_blank())
 
 # Plot benchmarking
-METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm")
+METHOD_ORDER <- c("real", "indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm", "mvnfast")
 METHOD_COLORS <- c("black", RColorBrewer::brewer.pal(length(METHOD_ORDER)-1, "Dark2"))
 benchmark <- read_tsv("../processed/benchmark/results.txt") |>
     filter(method != "indep") |> # We don't want to compare indep for this, whose runtime hasn't been optimized anyway
@@ -302,7 +302,7 @@ We computed the dependence structure of the genes as well as the variances of ma
 We computed the means of gene expressions at each time point.
 We then used these to simulate 20 time series datasets for each of the four simulation methods: independent, PCA, Wishart, and corpcor.
 
-We note that, unlike many timeseries methods that consider correlation across time points, the dependence here is between genes within the same sample and no dependence between samples or timepoints is generated.
+We note that, unlike many timeseries methods that consider correlation across time points, the dependence here is between genes within the same sample and generated samples are independent, conditional upon the time point.
 This reflects scenarios where CYCLOPS is used, for example, post-mortem biopsy samples of unrelated individuals collected at different times [@CYCLOPS2].
 
 We ran CYCLOPS on each dataset with a list of cyclic mouse genes (from [@Zhang2014], JTK p-value $<0.05$), which yielded an estimated relative time for each sample.
@@ -362,10 +362,10 @@ where $D$ is a $p \times p$ diagonal matrix, $U$ is $p \times k$ for some $k \ll
 This is a combination of an independent part (the diagonal matrix) and a low-rank part ($U W^2 U^T$ is rank at most $k$).
 
 Generating data for $\Sigma_{\text{sim}}$ of this form is highly efficient.
-We use two basic facts about the multivariate distribution.
+We use two basic facts about the multivariate normal distribution.
 First, if $A$ is a matrix and $u \sim N(0, \Sigma)$ then $Au \sim N(0, A \Sigma A^T)$.
-Second, if $u \sim N(0, \Sigma_1)$ and $v \sim N(0, \Sigma_2)$, then $u + v \sim N(0, \Sigma_1 + \Sigma_2)$.
-Therefore, given matrices $D, U, W$ and $u \sim N(0, I_k)$ and $v \sim N(0, I_p)$ (where $I_k$ and $I_p$ are the $k \times k$ and $p \times p$ identity matrices), then
+Second, if $u \sim N(0, \Sigma_1)$ and $v \sim N(0, \Sigma_2)$ are independent, then $u + v \sim N(0, \Sigma_1 + \Sigma_2)$.
+Therefore, given matrices $D, U, W$ and independent random vectors $u \sim N(0, I_k)$ and $v \sim N(0, I_p)$ (where $I_k$ and $I_p$ are the $k \times k$ and $p \times p$ identity matrices), then
 $$ D v + U W u \sim N(0, D^2 + UW^2 U^T) = N(0, \Sigma_{\text{sim}}) $$
 as desired.
 
@@ -510,7 +510,7 @@ The corpcor method typically undershoots.
 The spiked Wishart method also undershoots but less so than the corpcor method and therefore we believe represents the best starting point for users.
 However, we emphasize that in any application, the users should compare their simulated data to the reference dataset and this can be used to determine the best method for the specific application at hand, which could vary depending on data set.
 
-We compared our simulated data to that of the R package SPsimSeq [@Assefa2020].
+We compared our simulated data to that of the R package SPsimSeq [@Assefa2020], due to its popularity, support for bulk RNA-Seq, and use of Gaussian copulas.
 In contrast to our package, SPsimSeq uses a two-step randomization.
 In short, it first fits distributions to each genes and then bins those distributions into discrete buckets.
 Then, new data is generated by drawing from a multivariate normal distribution whose covariance matrix equals the sample covariance matrix of the reference dataset.
@@ -525,6 +525,7 @@ Other Gaussian copula-based R packages include `copula`, `bindata`, `GenOrd`, an
 The `bigsimr` package provides faster implementations of these methods which scale up to omics-level data.
 However, even this is computationally demanding; their paper references generating 20,000-dimensional vectors in “under an hour” using 16 threads.
 All of these packages provide more flexibility in specifying dependence and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.
+Another package that optimizes the speed of random multivariate normal vector generation is the `mvnfast` package for R [@mvnfast], however, we show that this does not provide a meaningful speedup for our use-cases due to the reliance on the Cholesky decomposition, see @fig-intro d.
 
 While we describe one special form of $\Sigma_{\text{sim}}$ where generation is highly efficient, there exist many other possible covariance matrix forms.
 Block diagonal covariance matrices are one such example which can efficiently represent even high-dimensional data [@Devijver02012018] and lend themselves to efficient simulation.
@@ -536,7 +537,7 @@ Iterative sampling methods [@Krylov_subspaces] are one approach that could explo
 Source code for all simulations and figures in this paper is available at [github.com/itmat/dependent_sim_paper/](https://github.com/itmat/dependent_sim_paper/).
 Source code for the `dependentsimr` package is available at [github.com/tgbrooks/dependent_sim](https://github.com/tgbrooks/dependent_sim/).
 All sequencing data used is available from the Gene Expression Omnibus (GEO) with accession numbers GSE151923, GSE81142, and GSE151565.
-Metabolomics data was obtained from MetaboAnalyst (https://api2.xialab.ca/api/download/metaboanalyst/plasma_nmr.csv).
+Metabolomics data was obtained from MetaboAnalyst ([https://api2.xialab.ca/api/download/metaboanalyst/plasma_nmr.csv](https://api2.xialab.ca/api/download/metaboanalyst/plasma_nmr.csv)).
 
 ## Funding statement and competing interests
 

@@ -374,14 +374,29 @@ rule simulate_mvrnorm_for_benchmark:
     script:
         "scripts/mvrnorm.benchmark.R"
 
+rule simulate_mvnfast_for_benchmark:
+    input:
+        "processed/Cortex_ZT0-counts.csv",
+        sif = ancient("images/quarto.sif"),
+    output:
+        "processed/benchmark/mvnfast/{n_genes}.txt"
+    resources:
+        mem_mb = 60_000,
+    benchmark:
+        "processed/benchmark/mvnfast/{n_genes}.benchmark.txt"
+    container:
+        "images/quarto.sif"
+    script:
+        "scripts/mvnfast.benchmark.R"
+
 rule benchmark:
     input:
         results = expand("processed/benchmark/{method}/{n_genes}.txt",
-            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm"],
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm", "mvnfast"],
             n_genes = [500, 1000, 2000, 4000, 8000, 16000, 32000],
         ),
         benchmarks = expand("processed/benchmark/{method}/{n_genes}.benchmark.txt",
-            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm"],
+            method = ["indep", "pca", "wishart", "corpcor", "SPsimSeq", "vinecopula", "mvrnorm", "mvnfast"],
             n_genes = [500, 1000, 2000, 4000, 8000, 16000, 32000],
         )
     output:

@@ -6,4 +6,4 @@ From: ghcr.io/quarto-dev/quarto:1.5.56
     DEBIAN_FRONTEND=noninteractive apt-get install -y r-base r-cran-remotes r-bioc-deseq2 r-cran-mass r-cran-testthat texlive r-cran-magick
 
     R -e 'remotes::install_github("tgbrooks/dependent_sim")'
-    R -e 'install.packages(c("tidyverse", "quarto", "knitr", "ggpointdensity", "patchwork", "corpcor", "sparsesvd", "cowplot"))'
+    R -e 'install.packages(c("tidyverse", "quarto", "knitr", "ggpointdensity", "patchwork", "corpcor", "sparsesvd", "cowplot", "mvnfast"))'
