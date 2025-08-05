@@ -527,9 +527,9 @@ However, even this is computationally demanding; their paper references generati
 All of these packages provide more flexibility in specifying dependence and therefore the longer run-times may be unavoidable for use cases where researchers need to parameterize the dependence structure.
 Another package that optimizes the speed of random multivariate normal vector generation is the `mvnfast` package for R [@mvnfast], however, we show that this does not provide a meaningful speedup for our use-cases, likely due to the reliance on the Cholesky decomposition, see @fig-intro d.
 
-While we describe one special form of $\Sigma_{\text{sim}}$ where generation is highly efficient, there exist many other possible covariance matrix forms.
+While we describe one special form of $\Sigma_{\text{sim}}$ where generation is highly efficient, there exist many other possible covariance matrix forms which are promising directions for future work.
 Block diagonal covariance matrices are one such example which can efficiently represent even high-dimensional data [@Devijver02012018] and lend themselves to efficient simulation.
-Sparse matrix methods [@Bien2011-nx; @Bickel_sparse; @Cai_adaptive] yield exactly zero correlation between some variables, but it is less clear how to simulate data from these efficiently.
+Other approaches include sparse matrix methods [@Bien2011-nx; @Bickel_sparse; @Cai_adaptive] which yield exactly zero correlation between some variables, but it is less clear how to simulate data from these efficiently.
 Iterative sampling methods [@Krylov_subspaces] are one approach that could exploit the sparse nature and may even extend to sparse inverse covariance methods [@sparse_inverse_covariance].
 
 ## Data availability
