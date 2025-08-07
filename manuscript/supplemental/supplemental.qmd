@@ -105,3 +105,13 @@ While rvinecopula supports multi-threaded operation, we ran using a single threa
 
 To assess a simple multivariate normal distribution simulation option, we ran the `mvrnorm` function from the MASS R package.
 We set means to be the mean expression of each gene and used the sample covariance matrix as the `Sigma` parameter.
+
+### Running mvnfast
+
+The `mvnfast` R package provides a faster implementation of the multivariate normal distribution random vector generator function, called `rmvn`. 
+As for `mvrnorm`, we set means to be the mean expression of each gene and used the sample covariance matrix as the `Sigma` parameter.
+One core was used for a fair comparison to the other methods, though `mvnfast` does support multithreaded execution.
+Note that `mvnfast` has an option for using a provided pre-computed Cholesky decompositoin of the covariance matrix instead of producing it itself.
+Since Cholesky decomposition is the primary time-sink, using this option could likely considerably speed up the execution time if such a decomposition is known.
+We did not use this option since the comparison is for a generic covariance matrix, where the Cholesky decomposition is not known a priori.
+This contrasts to our implementation which avoids Cholesky decomposition by using only covariance matrices of a specific form.
