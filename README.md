@@ -1,6 +1,6 @@
 # Generating Correlated Data for Omics Simulation
 
-This repository gives the source code for generating all figures and documents for our manuscript "Generating Correlation Data for Omics Simulation", see our [biorxiv preprint](https://www.biorxiv.org/content/10.1101/2025.01.31.634335v1).
+This repository gives the source code for generating all figures and documents for our manuscript "Generating Correlation Data for Omics Simulation", see our [PLOS Comp Bio publication](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1013392).
 
 # Dependencies
 
